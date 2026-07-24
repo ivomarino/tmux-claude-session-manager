@@ -197,6 +197,11 @@ tcsm-start() {
   # Pre-trust workspace to avoid trust dialog on startup
   ensure_workspace_trusted "$project_dir"
 
+  # Additional step: explicitly set trust via claude config to work around
+  # a known issue where the trust dialog still appears even when hasTrustDialogAccepted
+  # is set in ~/.claude.json (see: https://github.com/anthropics/claude-code/issues/9113)
+  claude config set "workspaceTrustSettings.\"$project_dir\".hasTrustDialogAccepted" true 2>/dev/null || true
+
   # Start Claude session interactively in tmux window
   # Interactive mode auto-registers session and allows attaching
   local claude_cmd="claude --model haiku --permission-mode bypassPermissions --remote-control --name $project"
