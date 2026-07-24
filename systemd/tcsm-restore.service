@@ -1,0 +1,22 @@
+[Unit]
+Description=Restore tcsm Claude sessions on boot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment="PATH=%h/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+Environment="HOME=%h"
+ExecStart=/bin/bash -c 'source %h/.claude/skills/tcsm.sh && tcsm-restore'
+TimeoutStartSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tcsm-restore
+Restart=on-failure
+RestartSec=5
+StartLimitInterval=120
+StartLimitBurst=3
+
+[Install]
+WantedBy=default.target

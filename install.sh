@@ -81,7 +81,30 @@ else
   log "✓ Session created"
 fi
 
-# Step 4: Display completion message
+# Step 4: Optional systemd unit installation
+INSTALL_SYSTEMD="${INSTALL_SYSTEMD:-0}"
+if [[ "$INSTALL_SYSTEMD" == "1" ]]; then
+  log "Installing systemd unit for automatic session restoration on boot..."
+  mkdir -p "$HOME/.config/systemd/user"
+  cp "$REPO_PATH/systemd/tcsm-restore.service" "$HOME/.config/systemd/user/tcsm-restore.service" || \
+    error "Failed to install systemd unit"
+  systemctl --user daemon-reload
+  log "✓ Systemd unit installed"
+  log "Enabling automatic restoration on boot..."
+  systemctl --user enable --now tcsm-restore.service || \
+    error "Failed to enable systemd unit"
+  log "✓ Systemd unit enabled and started"
+else
+  log "Skipped systemd unit installation (INSTALL_SYSTEMD=0)"
+  log "To enable boot-time session restoration, run:"
+  log "  INSTALL_SYSTEMD=1 bash install.sh"
+  log "Or enable manually:"
+  log "  cp systemd/tcsm-restore.service ~/.config/systemd/user/"
+  log "  systemctl --user daemon-reload"
+  log "  systemctl --user enable --now tcsm-restore.service"
+fi
+
+# Step 5: Display completion message
 echo ""
 echo "╔════════════════════════════════════════════════════════╗"
 echo "║  Installation Complete!                               ║"
@@ -112,6 +135,7 @@ echo ""
 echo "Environment variables:"
 echo "  TENANT=staging ./install.sh          # Creates staging-tcsm"
 echo "  SKILLS_DEST=/custom/path bash install.sh"
+echo "  INSTALL_SYSTEMD=1 bash install.sh   # Auto-restore on boot"
 echo ""
 
 log "Installation finished successfully"
