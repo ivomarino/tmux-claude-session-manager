@@ -241,6 +241,23 @@ tcsm-start() {
       '.sessions[$proj] = {id: $proj, path: $path, window: $proj, created: now}' \
       "$TCSM_SESSION_MAP" > "${TCSM_SESSION_MAP}.tmp" && mv "${TCSM_SESSION_MAP}.tmp" "$TCSM_SESSION_MAP"
 
+    # Wait for Claude to register the session (creates ~/.claude/sessions/*.json)
+    # This is critical: the session file must exist before we return for web UI integration
+    local wait_count=0
+    while [[ $wait_count -lt 50 ]]; do  # 5 seconds max (50 * 0.1s)
+      if grep -l "\"$project\"" "$HOME/$CLAUDE_HOME/sessions"/*.json 2>/dev/null | grep -q .; then
+        break
+      fi
+      sleep 0.1
+      ((wait_count++))
+    done
+
+    if [[ $wait_count -ge 50 ]]; then
+      log_session "WARN" "Session file not created within 5s: $project (may still be starting)"
+    else
+      log_session "INFO" "Session registered after $((wait_count * 100))ms"
+    fi
+
     log_session "OK" "Started Claude session: $project"
     echo -e "${GREEN}✓${NC} Claude session started for ${BLUE}$project${NC}"
     echo -e "  Window:  ${YELLOW}tcsm:$window_name${NC}"
@@ -294,12 +311,15 @@ tcsm-stop() {
 
       # Clean up Claude session files to force fresh registration on restart
       sleep 0.5
-      # Remove session files that match this project name
-      rm -f "$HOME/.claude/sessions"/*"${project}"* 2>/dev/null || true
-      # Also clean any orphaned sessions by searching for name match
+      # Remove ONLY session files where name EXACTLY matches this project (via jq)
+      # Use jq to ensure we don't delete files from other sessions with similar names
       for sessfile in "$HOME/.claude/sessions"/*.json; do
         if [[ -f "$sessfile" ]]; then
-          jq -e ".name == \"$project\"" "$sessfile" &>/dev/null && rm -f "$sessfile"
+          # Only delete if name matches EXACTLY
+          if jq -e ".name == \"$project\"" "$sessfile" &>/dev/null; then
+            rm -f "$sessfile"
+            log_session "INFO" "Cleaned session file: $(basename $sessfile)"
+          fi
         fi
       done
 
