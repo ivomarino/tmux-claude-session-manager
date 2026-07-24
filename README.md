@@ -170,9 +170,9 @@ so tmux stores a literal `$` (in a single-quoted value, use a bare
 
 ---
 
-## Fork Enhancements (<your-github-user>)
+## Fork Enhancements (ivomarino)
 
-This fork extends the upstream plugin with comprehensive session management tools and multi-VM support.
+This fork extends the upstream plugin with comprehensive session management tools, multi-VM support, and automated boot-time session restoration via systemd.
 
 ### New Features
 
@@ -274,6 +274,31 @@ TENANT=staging bash install.sh
 # - Default tmux session: dev-tcsm (or $TENANT-tcsm)
 ```
 
+#### 4. **Boot-Time Auto-Restoration** (`systemd/tcsm-restore.service`)
+
+Optional systemd service that automatically restores all registered Claude sessions when the user logs in:
+
+```bash
+# Install and enable systemd service for auto-restoration
+INSTALL_SYSTEMD=1 bash install.sh
+
+# Or enable manually after install
+systemctl --user enable --now tcsm-restore.service
+
+# Monitor restoration at login
+journalctl --user -u tcsm-restore.service -f
+```
+
+The service calls `tcsm-restore` directly, inheriting all TCSM features:
+- **Persistent sessions** — all registered sessions restored across reboots
+- **Git-aware discovery** — automatically finds real source repos
+- **Workspace trust** — pre-configured to skip interactive prompts
+- **Clean logs** — all activity logged to `~/.claude/tcsm.log`
+
+No configuration needed — add sessions via `tcsm-start` and they auto-restore on next boot.
+
+**What it replaces:** The old, broken `tmux-claude.service` that was duplicating 150+ lines of logic and silently failing due to renamed registry files. Now unified and consolidated.
+
 ### Default Session (`dev-tcsm`)
 
 Each VM gets a default session named `<tenant>-tcsm` that runs in the repository root:
@@ -344,6 +369,9 @@ export TENANT=production
 # (space-separated paths where tcsm-start looks for git-controlled source folders)
 export TCSM_SEARCH_ROOTS="$HOME/src $HOME/.flamelet/tenant /custom/projects"
 
+# Enable systemd unit for boot-time session auto-restoration (default: 0)
+export INSTALL_SYSTEMD=1
+
 bash install.sh
 ```
 
@@ -384,4 +412,5 @@ Bug fixes and improvements are periodically contributed back to the upstream pro
 ---
 
 **Last Updated:** 2026-07-24  
-**Fork Repo:** https://github.com/<your-github-user>/tmux-claude-session-manager
+**Fork Repo:** https://github.com/ivomarino/tmux-claude-session-manager  
+**Upstream:** https://github.com/craftzdog/tmux-claude-session-manager
