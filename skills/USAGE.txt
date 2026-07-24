@@ -1,32 +1,38 @@
 ╔════════════════════════════════════════════════════════════════════════════╗
-║        Claude Project Sessions Skill - Quick Reference                       ║
+║        TCSM (tmux-claude-session-manager) Skill - Quick Reference            ║
 ╚════════════════════════════════════════════════════════════════════════════╝
 
 INSTALLATION:
-  Already installed at: ~/.claude/skills/claude-project-sessions.sh
-  Documentation: ~/.claude/skills/claude-sessions.md
+  Already installed at: ~/.claude/skills/tcsm.sh
+  Documentation: ~/.claude/skills/tcsm.md
 
 QUICK START:
 
   1. Start a Claude session for a project:
-     source ~/.claude/skills/claude-project-sessions.sh
-     start-claude-project myproject
+     source ~/.claude/skills/tcsm.sh
+     tcsm-start myproject
 
-  2. List all sessions:
-     list-claude-sessions
+  2. Stop a session:
+     tcsm-stop myproject
 
-  3. Check status:
-     claude-session-status
+  3. Restart a session:
+     tcsm-restart myproject
 
-  4. Connect to remote dev container:
-     remote-claude-session <remote-host-ip> myproject
+  4. List all sessions:
+     tcsm-list
+
+  5. Check status:
+     tcsm-status
+
+  6. Connect to remote dev container:
+     tcsm-remote <remote-host-ip> myproject
 
 TMUX & ATTACHMENT:
 
   Sessions run in tmux windows - you can attach and interact:
 
-  tmux list-windows -t claude       # List all project windows
-  tmux attach -t claude:myproject      # Attach to myproject session
+  tmux list-windows -t tcsm         # List all project windows
+  tmux attach -t tcsm:myproject     # Attach to myproject session
 
   Sessions auto-register and appear in web UI:
 
@@ -35,15 +41,15 @@ TMUX & ATTACHMENT:
 
 PERMISSION MODES:
 
-  Normal:   start-claude-project myproject
-  Elevated: start-claude-project myproject --elevate
-  Remote:   start-claude-project myproject --remote <remote-host-ip>
+  Normal:   tcsm-start myproject
+  Elevated: tcsm-start myproject --elevate
+  Remote:   tcsm-start myproject --remote <remote-host-ip>
 
 CONFIGURATION FILES:
 
-  Session mappings: ~/.claude/session-restore-map.json
-  Project paths:    ~/.claude/project-sessions.json
-  Logs:             ~/.claude/project-sessions.log
+  Session mappings: ~/.claude/tcsm-session-map.json
+  Project paths:    ~/.claude/tcsm-projects.json
+  Logs:             ~/.claude/tcsm.log
 
 SUPPORTED PROJECTS (in ~/src/):
 
@@ -61,38 +67,44 @@ REMOTE HOSTS:
 EXAMPLES:
 
   # Start local session
-  start-claude-project myproject
+  tcsm-start myproject
+
+  # Stop a session
+  tcsm-stop myproject
+
+  # Restart a session
+  tcsm-restart myproject
 
   # List all sessions
-  list-claude-sessions
+  tcsm-list
 
   # Remote session on dev container
-  remote-claude-session <remote-host-ip> myproject
+  tcsm-remote <remote-host-ip> myproject
 
   # Elevated session (sudo)
-  start-claude-project myproject --elevate
+  tcsm-start myproject --elevate
 
   # Restore all sessions after reboot
-  restore-claude-sessions --remote <remote-host-ip>
+  tcsm-restore --remote <remote-host-ip>
 
 TROUBLESHOOTING:
 
-  Check status:  claude-session-status
-  View logs:     tail -f ~/.claude/project-sessions.log
-  List sessions: list-claude-sessions
+  Check status:  tcsm-status
+  View logs:     tail -f ~/.claude/tcsm.log
+  List sessions: tcsm-list
   Test SSH:      ssh your-user@<remote-host-ip> echo ok
 
 INTEGRATION POINTS:
 
-  • Tmux: Sessions created in "claude" tmux session
+  • Tmux: Sessions created in "tcsm" tmux session
   • Claude CLI: Uses "claude code <path>" for each project
   • Flamelet: Can run flamelet commands within session
   • SSH: Supports both local and remote dev container
   • Systemd: Integrates with tmux-claude service management
 
 For detailed documentation, see:
-  ~/.claude/skills/claude-sessions.md
+  ~/.claude/skills/tcsm.md
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Created: 2026-07-24
-Skill Version: 1.0.0
+Skill Version: 2.0.0

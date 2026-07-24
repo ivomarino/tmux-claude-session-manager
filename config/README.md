@@ -3,13 +3,13 @@
 Copy these templates to `~/.claude/` and customize for your environment:
 
 ```bash
-cp project-sessions.json.template ~/.claude/project-sessions.json
+cp tcsm-projects.json.template ~/.claude/tcsm-projects.json
 cp accounts.json.template ~/.claude/accounts.json
 ```
 
-## project-sessions.json
+## tcsm-projects.json
 
-Maps project names to directory paths and settings.
+Maps project names to directory paths and settings for TCSM (tmux-claude-session-manager).
 
 **Example**:
 ```json
@@ -25,7 +25,7 @@ Maps project names to directory paths and settings.
 
 **Usage in skill**:
 ```bash
-start-claude-project myproject
+tcsm-start myproject
 # Opens ~/src/myproject in Claude
 ```
 
@@ -35,5 +35,5 @@ Tracks Claude accounts and their configuration.
 
 **Environment variable override**:
 ```bash
-PROJECT_CONFIG_FILE=/custom/path/project-sessions.json start-claude-project myproject
+PROJECT_CONFIG_FILE=/custom/path/tcsm-projects.json tcsm-start myproject
 ```

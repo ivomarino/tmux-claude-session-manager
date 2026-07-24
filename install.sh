@@ -19,23 +19,54 @@ log "Tenant: $TENANT"
 log "Session: $SESSION_NAME"
 log "Repository: $REPO_PATH"
 
+# Step 1: Migrate old deployed copies if they exist
+if [[ -f "$SKILLS_DEST/claude-project-sessions.sh" ]] && [[ ! -f "$SKILLS_DEST/tcsm.sh" ]]; then
+  log "Migrating old skill file: claude-project-sessions.sh → tcsm.sh"
+  mv "$SKILLS_DEST/claude-project-sessions.sh" "$SKILLS_DEST/tcsm.sh" && \
+  log "✓ Skill file migrated"
+fi
+
+if [[ -f "$CONFIG_DEST/project-sessions.json" ]] && [[ ! -f "$CONFIG_DEST/tcsm-projects.json" ]]; then
+  log "Migrating old config: project-sessions.json → tcsm-projects.json"
+  mv "$CONFIG_DEST/project-sessions.json" "$CONFIG_DEST/tcsm-projects.json" && \
+  log "✓ Project config migrated"
+fi
+
+if [[ -f "$CONFIG_DEST/session-restore-map.json" ]] && [[ ! -f "$CONFIG_DEST/tcsm-session-map.json" ]]; then
+  log "Migrating old session map: session-restore-map.json → tcsm-session-map.json"
+  mv "$CONFIG_DEST/session-restore-map.json" "$CONFIG_DEST/tcsm-session-map.json" && \
+  log "✓ Session map migrated"
+fi
+
+if [[ -f "$CONFIG_DEST/project-sessions.log" ]] && [[ ! -f "$CONFIG_DEST/tcsm.log" ]]; then
+  log "Migrating old log: project-sessions.log → tcsm.log"
+  mv "$CONFIG_DEST/project-sessions.log" "$CONFIG_DEST/tcsm.log" && \
+  log "✓ Log file migrated"
+fi
+
 # Step 1: Install skills
 log "Installing skills to $SKILLS_DEST..."
 mkdir -p "$SKILLS_DEST"
-cp "$REPO_PATH/skills/claude-project-sessions.sh" "$SKILLS_DEST/" || error "Failed to copy skill"
-chmod +x "$SKILLS_DEST/claude-project-sessions.sh"
+cp "$REPO_PATH/skills/tcsm.sh" "$SKILLS_DEST/" || error "Failed to copy skill"
+chmod +x "$SKILLS_DEST/tcsm.sh"
 log "✓ Skill installed"
 
 # Step 2: Install configuration templates
 log "Installing config templates to $CONFIG_DEST..."
 mkdir -p "$CONFIG_DEST"
 
-for template in project-sessions.json accounts.json; do
-  if [ ! -f "$CONFIG_DEST/$template" ]; then
-    cp "$REPO_PATH/config/${template}.template" "$CONFIG_DEST/$template" && \
-    log "✓ Created $CONFIG_DEST/$template (from template)"
+# Map old template names to new ones for migration
+declare -A template_map=(
+  ["tcsm-projects.json"]="tcsm-projects.json"
+  ["accounts.json"]="accounts.json"
+)
+
+for new_name in "${!template_map[@]}"; do
+  if [[ ! -f "$CONFIG_DEST/$new_name" ]]; then
+    cp "$REPO_PATH/config/${new_name}.template" "$CONFIG_DEST/$new_name" && \
+    log "✓ Created $CONFIG_DEST/$new_name (from template)"
   else
-    log "⚠ $CONFIG_DEST/$template already exists (skipped)"
+    log "⚠ $CONFIG_DEST/$new_name already exists (skipped)"
   fi
 done
 
@@ -64,20 +95,23 @@ echo "1. Attach to your session:"
 echo "   tmux attach -t $SESSION_NAME"
 echo ""
 echo "2. Source the skill:"
-echo "   source ~/.claude/skills/claude-project-sessions.sh"
+echo "   source ~/.claude/skills/tcsm.sh"
 echo ""
 echo "3. Start managing Claude sessions:"
-echo "   start-claude-project myproject"
-echo "   list-claude-sessions"
-echo "   tmux attach -t claude-myproject"
+echo "   tcsm-start myproject"
+echo "   tcsm-stop myproject"
+echo "   tcsm-restart myproject"
+echo "   tcsm-list"
+echo "   tcsm-status"
+echo "   tmux attach -t tcsm:myproject"
 echo ""
 echo "Configuration:"
-echo "  - Edit ~/.claude/project-sessions.json for project paths"
+echo "  - Edit ~/.claude/tcsm-projects.json for project paths"
 echo "  - Edit ~/.claude/accounts.json for account settings"
 echo ""
 echo "Environment variables:"
 echo "  TENANT=staging ./install.sh          # Creates staging-tcsm"
-echo "  CLAUDE_SKILLS_DIR=/custom/path bash install.sh"
+echo "  SKILLS_DEST=/custom/path bash install.sh"
 echo ""
 
 log "Installation finished successfully"

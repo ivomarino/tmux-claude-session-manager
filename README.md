@@ -176,28 +176,35 @@ This fork extends the upstream plugin with comprehensive session management tool
 
 ### New Features
 
-#### 1. **Claude Session Manager Skill** (`skills/`)
+#### 1. **TCSM Skill** (`skills/`)
 
-A complete shell skill for managing Claude sessions across projects:
+A complete shell skill for managing Claude sessions across projects in TCSM (tmux-claude-session-manager) sessions:
 
 ```bash
-source ~/.claude/skills/claude-project-sessions.sh
+source ~/.claude/skills/tcsm.sh
 
 # Start a project session
-start-claude-project myproject
+tcsm-start myproject
+
+# Stop a project session
+tcsm-stop myproject
+
+# Restart a project session
+tcsm-restart myproject
 
 # List all active sessions
-list-claude-sessions
+tcsm-list
 
 # Check session status
-claude-session-status
+tcsm-status
 
 # Attach to a session
-tmux attach -t claude-myproject
+tmux attach -t tcsm:myproject
 ```
 
 **Features:**
 - ✅ Interactive sessions in tmux windows (attachable)
+- ✅ Start, stop, and restart sessions
 - ✅ Auto-registration with Claude CLI
 - ✅ Web UI integration via bridgeSessionId
 - ✅ Workspace trust pre-configured (no dialogs on startup)
@@ -213,22 +220,22 @@ Portable configuration templates for projects and accounts:
 
 ```bash
 # Copy templates to ~/.claude/
-cp config/project-sessions.json.template ~/.claude/project-sessions.json
+cp config/tcsm-projects.json.template ~/.claude/tcsm-projects.json
 cp config/accounts.json.template ~/.claude/accounts.json
 
 # Customize for your environment
-vim ~/.claude/project-sessions.json
+vim ~/.claude/tcsm-projects.json
 ```
 
 **Configuration files:**
-- `project-sessions.json` - Project name → directory mappings
+- `tcsm-projects.json` - Project name → directory mappings
 - `accounts.json` - Claude account configuration
 - `.template` files - Templates with examples
 
 Environment variable overrides:
 ```bash
-PROJECT_CONFIG_FILE=/custom/path start-claude-project myproject
-CLAUDE_SKILLS_DIR=/custom/skills start-claude-project myproject
+PROJECT_CONFIG_FILE=/custom/path tcsm-start myproject
+SKILLS_DEST=/custom/skills tcsm-start myproject
 ```
 
 #### 3. **Installation Script** (`install.sh`)
@@ -257,8 +264,11 @@ Each VM gets a default session named `<tenant>-tcsm` that runs in the repository
 tmux attach -t dev-tcsm
 
 # Inside, manage all Claude sessions
-source ~/.claude/skills/claude-project-sessions.sh
-start-claude-project myproject
+source ~/.claude/skills/tcsm.sh
+tcsm-start myproject
+tcsm-stop myproject
+tcsm-restart myproject
+tcsm-list
 ```
 
 Session name format: `<tenant>-tcsm` (tcsm = tmux-claude-session-manager)
@@ -289,10 +299,10 @@ All paths and settings support environment variable overrides:
 
 ```bash
 # Custom skills directory
-export CLAUDE_SKILLS_DIR=/opt/claude/skills
+export SKILLS_DEST=/opt/claude/skills
 
 # Custom config location
-export PROJECT_CONFIG_FILE=/etc/claude/projects.json
+export CONFIG_DEST=/etc/claude
 
 # Custom Claude binary location
 export CLAUDE_BIN=/custom/bin/claude
@@ -306,7 +316,7 @@ bash install.sh
 ### Documentation
 
 - **`skills/README.md`** - Skill overview and features
-- **`skills/claude-sessions.md`** - Comprehensive skill documentation
+- **`skills/tcsm.md`** - Comprehensive skill documentation
 - **`skills/USAGE.txt`** - Quick reference card
 - **`config/README.md`** - Configuration file reference
 - **`install.sh`** - Installation and setup automation

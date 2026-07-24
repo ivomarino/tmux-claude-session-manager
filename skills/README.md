@@ -1,11 +1,11 @@
-# Claude Session Manager Skill
+# TCSM Session Manager Skill
 
-Unified Claude CLI session management for local development environments.
+Unified Claude CLI session management for local development environments using TCSM (tmux-claude-session-manager).
 
 ## Files
 
-- **`claude-project-sessions.sh`** - Main skill script with all session management functions
-- **`claude-sessions.md`** - Comprehensive documentation
+- **`tcsm.sh`** - Main skill script with all session management functions
+- **`tcsm.md`** - Comprehensive documentation
 - **`USAGE.txt`** - Quick reference card
 
 ## Features
@@ -23,27 +23,33 @@ Unified Claude CLI session management for local development environments.
 ```bash
 # Copy to Claude skills directory
 mkdir -p ~/.claude/skills
-cp claude-project-sessions.sh ~/.claude/skills/
+cp tcsm.sh ~/.claude/skills/
 ```
 
 ## Quick Start
 
 ```bash
-source ~/.claude/skills/claude-project-sessions.sh
+source ~/.claude/skills/tcsm.sh
 
 # Start a session
-start-claude-project myproject
+tcsm-start myproject
+
+# Stop a session
+tcsm-stop myproject
+
+# Restart a session
+tcsm-restart myproject
 
 # List all sessions  
-list-claude-sessions
+tcsm-list
 
 # Attach to a project
-tmux attach -t claude-myproject
+tmux attach -t tcsm:myproject
 ```
 
 ## Configuration
 
-Edit `~/.claude/project-sessions.json` to customize project paths:
+Edit `~/.claude/tcsm-projects.json` to customize project paths:
 
 ```json
 {
@@ -54,4 +60,4 @@ Edit `~/.claude/project-sessions.json` to customize project paths:
 }
 ```
 
-See `claude-sessions.md` for full documentation.
+See `tcsm.md` for full documentation.

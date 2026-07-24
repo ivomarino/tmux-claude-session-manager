@@ -1,8 +1,8 @@
-# Claude Project Sessions Skill
+# TCSM (tmux-claude-session-manager) Skill
 
 **Description**: Manage Claude CLI sessions in tmux windows for projects with support for local, elevated, and remote operations across infrastructure.
 
-**Version**: 1.0.0  
+**Version**: 2.0.0  
 **Type**: Session Management  
 **Author**: Claude Code
 
@@ -14,7 +14,7 @@ This skill provides unified Claude session management across:
 - **Remote sessions** via SSH to dev container (<remote-host-ip>)
 - **Multi-tenant** support for flamelet tenants (myproject, infra, datacenter, platform)
 
-Sessions run interactively in tmux windows and auto-register with the Claude CLI for web UI integration. You can attach to any window to interact with Claude directly.
+Sessions run interactively in tmux windows (organized under the `tcsm` session) and auto-register with the Claude CLI for web UI integration. You can attach to any window to interact with Claude directly.
 
 ## Usage
 
@@ -22,50 +22,62 @@ Sessions run interactively in tmux windows and auto-register with the Claude CLI
 
 ```bash
 # Start a Claude session for a project
-start-claude-project myproject
+tcsm-start myproject
 
 # Start with elevated permissions (sudo)
-start-claude-project myproject --elevate
+tcsm-start myproject --elevate
+
+# Stop a running Claude session
+tcsm-stop myproject
+
+# Restart a Claude session
+tcsm-restart myproject
 
 # List all active Claude sessions
-list-claude-sessions
+tcsm-list
 
 # Show session health status
-claude-session-status
+tcsm-status
 ```
 
 ### Remote Operations
 
 ```bash
 # Start session on remote dev container
-start-claude-project myproject --remote <remote-host-ip>
+tcsm-start myproject --remote <remote-host-ip>
+
+# Stop session on remote
+tcsm-stop myproject --remote <remote-host-ip>
+
+# Restart on remote
+tcsm-restart myproject --remote <remote-host-ip>
 
 # List sessions on remote
-list-claude-sessions --remote <remote-host-ip>
+tcsm-list --remote <remote-host-ip>
 
 # Shortcut for remote access
-remote-claude-session <remote-host-ip> myproject
+tcsm-remote <remote-host-ip> myproject
 
 # Remote with elevated permissions
-remote-claude-session <remote-host-ip> myproject --elevate
+tcsm-remote <remote-host-ip> myproject --elevate
 ```
 
 ### Boot & Recovery
 
 ```bash
 # Restore all mapped sessions (boot-time)
-restore-claude-sessions
+tcsm-restore
 
 # Dry-run to see what would be restored
-restore-claude-sessions --dry-run
+tcsm-restore --dry-run
 
 # Remote restoration
-restore-claude-sessions --remote <remote-host-ip>
+tcsm-restore --remote <remote-host-ip>
 ```
 
 ## Configuration
 
-### Session Mapping (`~/.claude/session-restore-map.json`)
+### Session Mapping (`~/.claude/tcsm-session-map.json`)
 Maps projects to Claude session IDs and tmux windows:
 ```json
 {
@@ -80,7 +92,7 @@ Maps projects to Claude session IDs and tmux windows:
 }
 ```
 
-### Project Paths (`~/.claude/project-sessions.json`)
+### Project Paths (`~/.claude/tcsm-projects.json`)
 Override default project directory resolution:
 ```json
 {
@@ -144,34 +156,34 @@ ssh your-user@platform-virt-01-controller.platform  # platform
 
 ### Start session for MyProject infrastructure
 ```bash
-start-claude-project myproject
-# Creates: claude:myproject tmux window
+tcsm-start myproject
+# Creates: tcsm:myproject tmux window
 # Path: /home/your-user/src/myproject
 # Flags: claude --model haiku --permission-mode bypassPermissions --remote-control --name myproject
-# Attach: tmux attach -t claude:myproject
+# Attach: tmux attach -t tcsm:myproject
 ```
 
 ### Start elevated session for system administration
 ```bash
-start-claude-project myproject --elevate
-# Creates: claude:myproject tmux window (elevated)
+tcsm-start myproject --elevate
+# Creates: tcsm:myproject tmux window (elevated)
 # Runs: sudo claude --model haiku ... --name myproject
-# Attach: tmux attach -t claude:myproject (runs with elevated permissions)
+# Attach: tmux attach -t tcsm:myproject (runs with elevated permissions)
 ```
 
 ### Attach to existing session
 ```bash
 # View available windows
-tmux list-windows -t claude
+tmux list-windows -t tcsm
 
 # Attach to a session
-tmux attach -t claude:myproject
-tmux attach -t claude:flamelet-infra
+tmux attach -t tcsm:myproject
+tmux attach -t tcsm:flamelet-infra
 ```
 
 ### Restore all sessions after container restart
 ```bash
-restore-claude-sessions --remote <remote-host-ip>
+tcsm-restore --remote <remote-host-ip>
 # Restores all mapped sessions on dev container
 # Useful after: pct restart 251
 ```
@@ -198,9 +210,9 @@ For unattended background sessions (no interaction), add `--bg` flag.
 
 ## Logging
 
-All operations are logged to `~/.claude/project-sessions.log`:
+All operations are logged to `~/.claude/tcsm.log`:
 ```bash
-tail -f ~/.claude/project-sessions.log
+tail -f ~/.claude/tcsm.log
 ```
 
 Log entries include:
@@ -214,22 +226,22 @@ Log entries include:
 
 ### Manual Session Mapping
 
-Add custom mappings to `session-restore-map.json`:
+Add custom mappings to `tcsm-session-map.json`:
 ```bash
 jq '.sessions["custom-project"] = {
   id: "manual_session",
   path: "/path/to/project",
   window: "custom",
   created: now
-}' ~/.claude/session-restore-map.json > /tmp/map.json && \
-mv /tmp/map.json ~/.claude/session-restore-map.json
+}' ~/.claude/tcsm-session-map.json > /tmp/map.json && \
+mv /tmp/map.json ~/.claude/tcsm-session-map.json
 ```
 
 ### Boot-time Auto-restore
 
 Add to startup script or systemd service:
 ```bash
-restore-claude-sessions
+tcsm-restore
 ```
 
 ### Integration with Flamelet
@@ -237,7 +249,7 @@ restore-claude-sessions
 Combine with flamelet tenant sessions:
 ```bash
 # Start Claude for myproject infrastructure
-start-claude-project myproject
+tcsm-start myproject
 
 # Then in the Claude window, use flamelet:
 ~/.flamelet/bin/flamelet --tenant myproject --list
@@ -247,8 +259,8 @@ start-claude-project myproject
 
 ### Session not appearing
 1. Check prerequisites: `claude`, `tmux`, `jq`
-2. Verify mapping: `jq . ~/.claude/session-restore-map.json`
-3. Check logs: `tail ~/.claude/project-sessions.log`
+2. Verify mapping: `jq . ~/.claude/tcsm-session-map.json`
+3. Check logs: `tail ~/.claude/tcsm.log`
 4. Test tmux: `tmux list-sessions`
 
 ### Remote connection fails
