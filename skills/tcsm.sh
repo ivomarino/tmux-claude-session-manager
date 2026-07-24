@@ -257,7 +257,24 @@ tcsm-stop() {
 
   # Check if tmux window exists
   if tmux list-windows -t "tcsm:$window_name" &>/dev/null 2>&1; then
+    # Get the pane PID and find associated Claude sessions
+    local pane_pid=$(tmux display-message -t "tcsm:$window_name" -p '#{pane_pid}' 2>/dev/null)
+
+    # Kill the tmux window (which terminates Claude)
     if tmux kill-window -t "tcsm:$window_name"; then
+      # Clean up Claude session files for this specific session to force fresh registration
+      if [[ -n "$pane_pid" ]]; then
+        sleep 0.5
+        # Remove session files that match this project name
+        rm -f "$HOME/.claude/sessions"/*"${project}"* 2>/dev/null || true
+        # Also clean any orphaned sessions by searching for name match
+        for sessfile in "$HOME/.claude/sessions"/*.json; do
+          if [[ -f "$sessfile" ]]; then
+            jq -e ".name == \"$project\"" "$sessfile" &>/dev/null && rm -f "$sessfile"
+          fi
+        done
+      fi
+
       log_session "OK" "Stopped Claude session: $project"
       echo -e "${GREEN}✓${NC} Claude session stopped for ${BLUE}$project${NC}"
       return 0
