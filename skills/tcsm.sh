@@ -150,8 +150,20 @@ tcsm-start() {
     elif [[ -d "$project" ]]; then
       project_dir="$project"
     else
-      log_session "ERROR" "Project directory not found: $project"
-      return 1
+      # Last resort: search TCSM_SEARCH_ROOTS for any matching directory
+      local root candidate
+      for root in $TCSM_SEARCH_ROOTS; do
+        candidate="$root/$project"
+        if [[ -d "$candidate" ]]; then
+          project_dir="$candidate"
+          break
+        fi
+      done
+
+      if [[ -z "$project_dir" ]]; then
+        log_session "ERROR" "Project directory not found: $project"
+        return 1
+      fi
     fi
   fi
 
