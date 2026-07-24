@@ -1,7 +1,7 @@
 {
   "accounts": {
     "primary": {
-      "email": "user@example.com",
+      "email": "your-email@example.com",
       "subscription_type": "claude-pro",
       "rate_limit_tier": "default_claude_5x"
     }

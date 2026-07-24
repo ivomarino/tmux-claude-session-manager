@@ -170,7 +170,7 @@ so tmux stores a literal `$` (in a single-quoted value, use a bare
 
 ---
 
-## Fork Enhancements (ivomarino)
+## Fork Enhancements (<your-github-user>)
 
 This fork extends the upstream plugin with comprehensive session management tools and multi-VM support.
 
@@ -184,7 +184,7 @@ A complete shell skill for managing Claude sessions across projects:
 source ~/.claude/skills/claude-project-sessions.sh
 
 # Start a project session
-start-claude-project floads
+start-claude-project myproject
 
 # List all active sessions
 list-claude-sessions
@@ -193,7 +193,7 @@ list-claude-sessions
 claude-session-status
 
 # Attach to a session
-tmux attach -t claude-floads
+tmux attach -t claude-myproject
 ```
 
 **Features:**
@@ -258,7 +258,7 @@ tmux attach -t dev-tcsm
 
 # Inside, manage all Claude sessions
 source ~/.claude/skills/claude-project-sessions.sh
-start-claude-project floads
+start-claude-project myproject
 ```
 
 Session name format: `<tenant>-tcsm` (tcsm = tmux-claude-session-manager)
@@ -274,10 +274,10 @@ Session name format: `<tenant>-tcsm` (tcsm = tmux-claude-session-manager)
 Example across three development VMs:
 
 ```
-VM: dev.floads         VM: staging.floads     VM: prod-iwf
+VM: dev.myproject         VM: staging.myproject     VM: prod-infra
 Session: dev-tcsm      Session: staging-tcsm  Session: prod-tcsm
-├─ floads              ├─ staging-floads      ├─ flamelet-iwf
-├─ flamelet-iwf        └─ staging-api         └─ infrastructure
+├─ myproject              ├─ staging-myproject      ├─ infrastructure-project
+├─ infrastructure-project        └─ staging-api         └─ infrastructure
 └─ synthesia
 ```
 
@@ -328,4 +328,4 @@ Bug fixes and improvements are periodically contributed back to the upstream pro
 ---
 
 **Last Updated:** 2026-07-24  
-**Fork Repo:** https://github.com/ivomarino/tmux-claude-session-manager
+**Fork Repo:** https://github.com/<your-github-user>/tmux-claude-session-manager

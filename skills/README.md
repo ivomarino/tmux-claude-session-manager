@@ -32,13 +32,13 @@ cp claude-project-sessions.sh ~/.claude/skills/
 source ~/.claude/skills/claude-project-sessions.sh
 
 # Start a session
-start-claude-project floads
+start-claude-project myproject
 
 # List all sessions  
 list-claude-sessions
 
 # Attach to a project
-tmux attach -t claude-floads
+tmux attach -t claude-myproject
 ```
 
 ## Configuration
@@ -48,7 +48,7 @@ Edit `~/.claude/project-sessions.json` to customize project paths:
 ```json
 {
   "sessions": {
-    "floads": {"path": "/home/user/src/floads"},
+    "myproject": {"path": "/home/user/src/myproject"},
     "flamelet-iwf": {"path": "/home/user/.flamelet/tenant/flamelet-iwf"}
   }
 }

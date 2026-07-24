@@ -16,7 +16,7 @@ Maps project names to directory paths and settings.
 {
   "sessions": {
     "myproject": {
-      "path": "/home/user/src/myproject",
+      "path": "${HOME}/src/myproject",
       "model": "haiku"
     }
   }
@@ -35,5 +35,5 @@ Tracks Claude accounts and their configuration.
 
 **Environment variable override**:
 ```bash
-PROJECT_CONFIG_FILE=/custom/path/project-sessions.json start-claude-project floads
+PROJECT_CONFIG_FILE=/custom/path/project-sessions.json start-claude-project myproject
 ```

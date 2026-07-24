@@ -10,7 +10,7 @@ QUICK START:
 
   1. Start a Claude session for a project:
      source ~/.claude/skills/claude-project-sessions.sh
-     start-claude-project floads
+     start-claude-project myproject
 
   2. List all sessions:
      list-claude-sessions
@@ -19,14 +19,14 @@ QUICK START:
      claude-session-status
 
   4. Connect to remote dev container:
-     remote-claude-session 192.168.160.251 floads
+     remote-claude-session <remote-host-ip> myproject
 
 TMUX & ATTACHMENT:
 
   Sessions run in tmux windows - you can attach and interact:
 
   tmux list-windows -t claude       # List all project windows
-  tmux attach -t claude:floads      # Attach to floads session
+  tmux attach -t claude:myproject      # Attach to myproject session
 
   Sessions auto-register and appear in web UI:
 
@@ -35,9 +35,9 @@ TMUX & ATTACHMENT:
 
 PERMISSION MODES:
 
-  Normal:   start-claude-project floads
-  Elevated: start-claude-project floads --elevate
-  Remote:   start-claude-project floads --remote 192.168.160.251
+  Normal:   start-claude-project myproject
+  Elevated: start-claude-project myproject --elevate
+  Remote:   start-claude-project myproject --remote <remote-host-ip>
 
 CONFIGURATION FILES:
 
@@ -47,40 +47,40 @@ CONFIGURATION FILES:
 
 SUPPORTED PROJECTS (in ~/src/):
 
-  ✓ floads           - Main project
-  ✓ flamelet-iwf     - IWF infrastructure
-  ✓ flamelet-dcx     - Data Center X
-  ✓ flamelet-kbe     - Kumbe infrastructure
+  ✓ myproject           - Main project
+  ✓ platform-infra     - IWF infrastructure
+  ✓ platform-dcx     - Data Center X
+  ✓ platform-kbe     - Kumbe infrastructure
 
 REMOTE HOSTS:
 
-  Dev container:  192.168.160.251
-  SSH user:       syseng
-  Connection:     ssh syseng@192.168.160.251
+  Dev container:  <remote-host-ip>
+  SSH user:       your-user
+  Connection:     ssh your-user@<remote-host-ip>
 
 EXAMPLES:
 
   # Start local session
-  start-claude-project floads
+  start-claude-project myproject
 
   # List all sessions
   list-claude-sessions
 
   # Remote session on dev container
-  remote-claude-session 192.168.160.251 floads
+  remote-claude-session <remote-host-ip> myproject
 
   # Elevated session (sudo)
-  start-claude-project floads --elevate
+  start-claude-project myproject --elevate
 
   # Restore all sessions after reboot
-  restore-claude-sessions --remote 192.168.160.251
+  restore-claude-sessions --remote <remote-host-ip>
 
 TROUBLESHOOTING:
 
   Check status:  claude-session-status
   View logs:     tail -f ~/.claude/project-sessions.log
   List sessions: list-claude-sessions
-  Test SSH:      ssh syseng@192.168.160.251 echo ok
+  Test SSH:      ssh your-user@<remote-host-ip> echo ok
 
 INTEGRATION POINTS:
 

@@ -11,8 +11,8 @@
 This skill provides unified Claude session management across:
 - **Local projects** in tmux windows with interactive access
 - **Elevated operations** for infrastructure/admin work with sudo
-- **Remote sessions** via SSH to dev container (192.168.160.251)
-- **Multi-tenant** support for flamelet tenants (floads, iwf, dcx, kbe)
+- **Remote sessions** via SSH to dev container (<remote-host-ip>)
+- **Multi-tenant** support for flamelet tenants (myproject, infra, datacenter, platform)
 
 Sessions run interactively in tmux windows and auto-register with the Claude CLI for web UI integration. You can attach to any window to interact with Claude directly.
 
@@ -22,10 +22,10 @@ Sessions run interactively in tmux windows and auto-register with the Claude CLI
 
 ```bash
 # Start a Claude session for a project
-start-claude-project floads
+start-claude-project myproject
 
 # Start with elevated permissions (sudo)
-start-claude-project floads --elevate
+start-claude-project myproject --elevate
 
 # List all active Claude sessions
 list-claude-sessions
@@ -38,16 +38,16 @@ claude-session-status
 
 ```bash
 # Start session on remote dev container
-start-claude-project floads --remote 192.168.160.251
+start-claude-project myproject --remote <remote-host-ip>
 
 # List sessions on remote
-list-claude-sessions --remote 192.168.160.251
+list-claude-sessions --remote <remote-host-ip>
 
 # Shortcut for remote access
-remote-claude-session 192.168.160.251 floads
+remote-claude-session <remote-host-ip> myproject
 
 # Remote with elevated permissions
-remote-claude-session 192.168.160.251 floads --elevate
+remote-claude-session <remote-host-ip> myproject --elevate
 ```
 
 ### Boot & Recovery
@@ -60,7 +60,7 @@ restore-claude-sessions
 restore-claude-sessions --dry-run
 
 # Remote restoration
-restore-claude-sessions --remote 192.168.160.251
+restore-claude-sessions --remote <remote-host-ip>
 ```
 
 ## Configuration
@@ -70,10 +70,10 @@ Maps projects to Claude session IDs and tmux windows:
 ```json
 {
   "sessions": {
-    "floads": {
+    "myproject": {
       "id": "session_1721234567_1234",
-      "path": "/home/syseng/src/floads",
-      "window": "floads",
+      "path": "/home/your-user/src/myproject",
+      "window": "myproject",
       "created": 1721234567.890
     }
   }
@@ -85,8 +85,8 @@ Override default project directory resolution:
 ```json
 {
   "sessions": {
-    "floads": {
-      "path": "/custom/path/to/floads"
+    "myproject": {
+      "path": "/custom/path/to/myproject"
     }
   }
 }
@@ -121,42 +121,42 @@ jq '.name' ~/.claude/sessions/*.json
 
 ## SSH Configuration
 
-Remote operations use SSH key-based auth to syseng user:
+Remote operations use SSH key-based auth to your-user user:
 ```bash
-# SSH as syseng to dev container
-ssh syseng@192.168.160.251
+# SSH as your-user to dev container
+ssh your-user@<remote-host-ip>
 
 # SSH to flamelet tenant controllers
-ssh syseng@controller-01.floads        # floads
-ssh syseng@iwf-prod-storage-03.iwf     # iwf
-ssh syseng@10.112.0.1                  # dcx
-ssh syseng@kbe-virt-01-controller.kbe  # kbe
+ssh your-user@controller-01.myproject        # myproject
+ssh your-user@infra-prod-storage-03.infra     # infra
+ssh your-user@10.112.0.1                  # datacenter
+ssh your-user@platform-virt-01-controller.platform  # platform
 ```
 
 ## Permission Model
 
 - **Local**: No escalation needed for normal projects
 - **Elevated**: `sudo` prefix for privileged operations
-- **Remote**: SSH key auth via ~/.ssh/syseng/id_rsa-*
+- **Remote**: SSH key auth via ~/.ssh/your-user/id_rsa-*
 - **Bypass**: SSH agent forwarding (-A) for infrastructure access
 
 ## Examples
 
-### Start session for Floads infrastructure
+### Start session for MyProject infrastructure
 ```bash
-start-claude-project floads
-# Creates: claude:floads tmux window
-# Path: /home/syseng/src/floads
-# Flags: claude --model haiku --permission-mode bypassPermissions --remote-control --name floads
-# Attach: tmux attach -t claude:floads
+start-claude-project myproject
+# Creates: claude:myproject tmux window
+# Path: /home/your-user/src/myproject
+# Flags: claude --model haiku --permission-mode bypassPermissions --remote-control --name myproject
+# Attach: tmux attach -t claude:myproject
 ```
 
 ### Start elevated session for system administration
 ```bash
-start-claude-project floads --elevate
-# Creates: claude:floads tmux window (elevated)
-# Runs: sudo claude --model haiku ... --name floads
-# Attach: tmux attach -t claude:floads (runs with elevated permissions)
+start-claude-project myproject --elevate
+# Creates: claude:myproject tmux window (elevated)
+# Runs: sudo claude --model haiku ... --name myproject
+# Attach: tmux attach -t claude:myproject (runs with elevated permissions)
 ```
 
 ### Attach to existing session
@@ -165,13 +165,13 @@ start-claude-project floads --elevate
 tmux list-windows -t claude
 
 # Attach to a session
-tmux attach -t claude:floads
-tmux attach -t claude:flamelet-iwf
+tmux attach -t claude:myproject
+tmux attach -t claude:flamelet-infra
 ```
 
 ### Restore all sessions after container restart
 ```bash
-restore-claude-sessions --remote 192.168.160.251
+restore-claude-sessions --remote <remote-host-ip>
 # Restores all mapped sessions on dev container
 # Useful after: pct restart 251
 ```
@@ -236,11 +236,11 @@ restore-claude-sessions
 
 Combine with flamelet tenant sessions:
 ```bash
-# Start Claude for floads infrastructure
-start-claude-project floads
+# Start Claude for myproject infrastructure
+start-claude-project myproject
 
 # Then in the Claude window, use flamelet:
-~/.flamelet/bin/flamelet --tenant floads --list
+~/.flamelet/bin/flamelet --tenant myproject --list
 ```
 
 ## Troubleshooting
@@ -252,10 +252,10 @@ start-claude-project floads
 4. Test tmux: `tmux list-sessions`
 
 ### Remote connection fails
-1. Test SSH: `ssh syseng@192.168.160.251 echo ok`
-2. Check keys: `ls ~/.ssh/syseng/id_rsa-*`
+1. Test SSH: `ssh your-user@<remote-host-ip> echo ok`
+2. Check keys: `ls ~/.ssh/your-user/id_rsa-*`
 3. Verify permissions: `ls -la ~/.ssh/`
-4. Check remote prerequisites: `ssh syseng@192.168.160.251 which claude tmux jq`
+4. Check remote prerequisites: `ssh your-user@<remote-host-ip> which claude tmux jq`
 
 ### Permission denied with --elevate
 1. Check sudoers: `sudo -l`
@@ -276,8 +276,8 @@ The skill automatically pre-trusts all project directories to avoid the workspac
 ```json
 {
   "workspaceTrustSettings": {
-    "/home/syseng/src/floads": {"hasTrustDialogAccepted": true},
-    "/home/syseng/.flamelet/tenant/flamelet-iwf": {"hasTrustDialogAccepted": true},
+    "/home/your-user/src/myproject": {"hasTrustDialogAccepted": true},
+    "/home/your-user/.flamelet/tenant/flamelet-infra": {"hasTrustDialogAccepted": true},
     ...
   }
 }
@@ -287,7 +287,7 @@ The `ensure_workspace_trusted` function automatically adds new project directori
 
 ## Security Notes
 
-- SSH keys stored in ~/.ssh/syseng/id_rsa-*
+- SSH keys stored in ~/.ssh/your-user/id_rsa-*
 - Elevated operations use sudo (password-less if configured)
 - Session IDs are internal tracking only
 - Logs contain full paths (may have sensitive info)

@@ -1,14 +1,14 @@
 {
   "sessions": {
-    "floads": {
-      "path": "$HOME/src/floads",
+    "myproject": {
+      "path": "$HOME/src/myproject",
       "model": "haiku",
       "description": "Main project"
     },
-    "flamelet-iwf": {
-      "path": "$HOME/.flamelet/tenant/flamelet-iwf",
+    "infrastructure-project": {
+      "path": "$HOME/.infra/tenant/infrastructure-project",
       "model": "haiku",
-      "description": "IWF infrastructure"
+      "description": "Infrastructure project"
     }
   },
   "defaults": {

@@ -182,7 +182,7 @@ list-claude-sessions() {
   local remote="${1:-}"
 
   if [[ -n "$remote" ]]; then
-    ssh -q "syseng@$remote" "source ~/.claude/skills/claude-project-sessions.sh && list-claude-sessions"
+    ssh -q "your-user@$remote" "source ~/.claude/skills/claude-project-sessions.sh && list-claude-sessions"
     return $?
   fi
 
@@ -233,7 +233,7 @@ restore-claude-sessions() {
   done
 
   if [[ -n "$remote" ]]; then
-    ssh -q "syseng@$remote" "source ~/.claude/skills/claude-project-sessions.sh && restore-claude-sessions $([ "$dry_run" = true ] && echo "--dry-run")"
+    ssh -q "your-user@$remote" "source ~/.claude/skills/claude-project-sessions.sh && restore-claude-sessions $([ "$dry_run" = true ] && echo "--dry-run")"
     return $?
   fi
 
@@ -267,7 +267,7 @@ claude-session-status() {
   local remote="${1:-}"
 
   if [[ -n "$remote" ]]; then
-    ssh -q "syseng@$remote" "source ~/.claude/skills/claude-project-sessions.sh && claude-session-status"
+    ssh -q "your-user@$remote" "source ~/.claude/skills/claude-project-sessions.sh && claude-session-status"
     return $?
   fi
 
@@ -313,7 +313,7 @@ remote-claude-session() {
   local cmd="source ~/.claude/skills/claude-project-sessions.sh && start-claude-project '$project'"
   [[ "$elevate" = true ]] && cmd="$cmd --elevate"
 
-  ssh -q "syseng@$host" "$cmd"
+  ssh -q "your-user@$host" "$cmd"
 }
 
 # Main entry point for skill invocation
@@ -349,15 +349,15 @@ USAGE:
   remote <HOST> <PROJECT> [--elevate]            Remote connection shortcut
 
 EXAMPLES:
-  start-claude-project floads
-  start-claude-project floads --elevate
-  start-claude-project floads --remote 192.168.160.251
+  start-claude-project myproject
+  start-claude-project myproject --elevate
+  start-claude-project myproject --remote <remote-host>
 
   list-claude-sessions
-  list-claude-sessions --remote 192.168.160.251
+  list-claude-sessions --remote <remote-host>
 
-  remote-claude-session 192.168.160.251 floads
-  remote-claude-session 192.168.160.251 flamelet-iwf --elevate
+  remote-claude-session <remote-host> floads
+  remote-claude-session <remote-host> infrastructure-project --elevate
 
 CONFIGURATION:
   Session mappings: $HOME/.claude/session-restore-map.json
