@@ -167,15 +167,20 @@ tcsm-start() {
     fi
   fi
 
-  # If the resolved directory isn't a git working tree, look for a
-  # git-controlled sibling among TCSM_SEARCH_ROOTS and prefer that instead.
+  # Enforce: project directory must be under git control
   if ! git -C "$project_dir" rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
     local git_dir
     if git_dir=$(tcsm-find-git-dir "$project"); then
       log_session "INFO" "'$project_dir' is not under git control; using git-controlled source instead: $git_dir"
       project_dir="$git_dir"
     else
-      log_session "INFO" "No git-controlled source folder found for '$project' in TCSM_SEARCH_ROOTS ($TCSM_SEARCH_ROOTS); continuing with $project_dir"
+      log_session "ERROR" "Project '$project' is not under git control: $project_dir"
+      log_session "ERROR" "Searched TCSM_SEARCH_ROOTS ($TCSM_SEARCH_ROOTS) but found no git-controlled version"
+      log_session "ERROR" "All TCSM sessions must be in git-controlled directories"
+      echo -e "${RED}✗${NC} Project not under git control: ${BLUE}$project${NC}"
+      echo -e "  Path:  ${YELLOW}$project_dir${NC}"
+      echo -e "  Searched: ${YELLOW}${TCSM_SEARCH_ROOTS}${NC}"
+      return 1
     fi
   fi
 
