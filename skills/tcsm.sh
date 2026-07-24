@@ -54,6 +54,28 @@ check_prerequisites() {
   return 0
 }
 
+# Clean up orphaned session files (files with no corresponding tmux window)
+cleanup_orphaned_sessions() {
+  local cleaned=0
+  [[ ! -d "$HOME/$CLAUDE_HOME/sessions" ]] && return 0
+
+  for sessfile in "$HOME/$CLAUDE_HOME/sessions"/*.json; do
+    [[ ! -f "$sessfile" ]] && continue
+
+    local name=$(jq -r '.name // empty' "$sessfile" 2>/dev/null)
+    [[ -z "$name" ]] && continue
+
+    local window_name="${name//\//-}"
+    # Check if corresponding tmux window exists
+    if ! tmux list-windows -t "tcsm:$window_name" &>/dev/null 2>&1; then
+      rm -f "$sessfile"
+      ((cleaned++))
+    fi
+  done
+
+  [[ $cleaned -gt 0 ]] && log_session "INFO" "Cleaned up $cleaned orphaned session file(s)"
+}
+
 # Ensure workspace is trusted to avoid trust dialog on startup
 ensure_workspace_trusted() {
   local project_dir="$1"
@@ -334,6 +356,7 @@ tcsm-list() {
 
   check_prerequisites || return 1
   init_mapping_files
+  cleanup_orphaned_sessions
 
   echo -e "${BLUE}=== TCSM Project Sessions ===${NC}\n"
 
@@ -419,6 +442,7 @@ tcsm-status() {
 
   check_prerequisites || return 1
   init_mapping_files
+  cleanup_orphaned_sessions
 
   echo -e "${BLUE}=== TCSM Session Status ===${NC}\n"
 
