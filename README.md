@@ -167,3 +167,165 @@ so tmux stores a literal `$` (in a single-quoted value, use a bare
 ## License
 
 [MIT](LICENSE) © Takuya Matsuyama
+
+---
+
+## Fork Enhancements (ivomarino)
+
+This fork extends the upstream plugin with comprehensive session management tools and multi-VM support.
+
+### New Features
+
+#### 1. **Claude Session Manager Skill** (`skills/`)
+
+A complete shell skill for managing Claude sessions across projects:
+
+```bash
+source ~/.claude/skills/claude-project-sessions.sh
+
+# Start a project session
+start-claude-project floads
+
+# List all active sessions
+list-claude-sessions
+
+# Check session status
+claude-session-status
+
+# Attach to a session
+tmux attach -t claude-floads
+```
+
+**Features:**
+- ✅ Interactive sessions in tmux windows (attachable)
+- ✅ Auto-registration with Claude CLI
+- ✅ Web UI integration via bridgeSessionId
+- ✅ Workspace trust pre-configured (no dialogs on startup)
+- ✅ Project path resolution from configuration
+- ✅ Support for local and elevated (sudo) operations
+- ✅ Multi-project support with flexible naming
+
+See `skills/README.md` for detailed documentation.
+
+#### 2. **Configuration Management** (`config/`)
+
+Portable configuration templates for projects and accounts:
+
+```bash
+# Copy templates to ~/.claude/
+cp config/project-sessions.json.template ~/.claude/project-sessions.json
+cp config/accounts.json.template ~/.claude/accounts.json
+
+# Customize for your environment
+vim ~/.claude/project-sessions.json
+```
+
+**Configuration files:**
+- `project-sessions.json` - Project name → directory mappings
+- `accounts.json` - Claude account configuration
+- `.template` files - Templates with examples
+
+Environment variable overrides:
+```bash
+PROJECT_CONFIG_FILE=/custom/path start-claude-project myproject
+CLAUDE_SKILLS_DIR=/custom/skills start-claude-project myproject
+```
+
+#### 3. **Installation Script** (`install.sh`)
+
+Automated setup for new VMs:
+
+```bash
+# Install everything in one command
+bash install.sh
+
+# Or specify tenant for multi-tenant setups
+TENANT=staging bash install.sh
+
+# This sets up:
+# - Skills in ~/.claude/skills/
+# - Config templates in ~/.claude/
+# - Default tmux session: dev-tcsm (or $TENANT-tcsm)
+```
+
+### Default Session (`dev-tcsm`)
+
+Each VM gets a default session named `<tenant>-tcsm` that runs in the repository root:
+
+```bash
+# Attach to default session
+tmux attach -t dev-tcsm
+
+# Inside, manage all Claude sessions
+source ~/.claude/skills/claude-project-sessions.sh
+start-claude-project floads
+```
+
+Session name format: `<tenant>-tcsm` (tcsm = tmux-claude-session-manager)
+
+**Benefits:**
+- Centralized workspace for managing Claude sessions
+- Easy multi-VM setup: `TENANT=prod bash install.sh`
+- Auto-starts on login (optional via systemd)
+- Session persists across disconnects
+
+### Multi-VM Workflow
+
+Example across three development VMs:
+
+```
+VM: dev.floads         VM: staging.floads     VM: prod-iwf
+Session: dev-tcsm      Session: staging-tcsm  Session: prod-tcsm
+├─ floads              ├─ staging-floads      ├─ flamelet-iwf
+├─ flamelet-iwf        └─ staging-api         └─ infrastructure
+└─ synthesia
+```
+
+Each VM independently manages its Claude sessions using the same skill.
+
+### Configuration via Environment
+
+All paths and settings support environment variable overrides:
+
+```bash
+# Custom skills directory
+export CLAUDE_SKILLS_DIR=/opt/claude/skills
+
+# Custom config location
+export PROJECT_CONFIG_FILE=/etc/claude/projects.json
+
+# Custom Claude binary location
+export CLAUDE_BIN=/custom/bin/claude
+
+# Tenant identifier (for multi-tenant setups)
+export TENANT=production
+
+bash install.sh
+```
+
+### Documentation
+
+- **`skills/README.md`** - Skill overview and features
+- **`skills/claude-sessions.md`** - Comprehensive skill documentation
+- **`skills/USAGE.txt`** - Quick reference card
+- **`config/README.md`** - Configuration file reference
+- **`install.sh`** - Installation and setup automation
+
+### Compatibility
+
+✅ Backward compatible with upstream  
+✅ Works with tmux 3.2+  
+✅ Supports macOS and Linux  
+✅ Generic paths (no hardcoding)  
+✅ Multi-VM ready  
+
+### Contributing Back
+
+Bug fixes and improvements are periodically contributed back to the upstream project:
+
+- [craftzdog/tmux-claude-session-manager](https://github.com/craftzdog/tmux-claude-session-manager)
+
+---
+
+**Last Updated:** 2026-07-24  
+**Fork Repo:** https://github.com/ivomarino/tmux-claude-session-manager

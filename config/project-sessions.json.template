@@ -1,0 +1,18 @@
+{
+  "sessions": {
+    "floads": {
+      "path": "$HOME/src/floads",
+      "model": "haiku",
+      "description": "Main project"
+    },
+    "flamelet-iwf": {
+      "path": "$HOME/.flamelet/tenant/flamelet-iwf",
+      "model": "haiku",
+      "description": "IWF infrastructure"
+    }
+  },
+  "defaults": {
+    "model": "haiku",
+    "permission_mode": "bypassPermissions"
+  }
+}

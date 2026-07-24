@@ -1,0 +1,98 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║        Claude Project Sessions Skill - Quick Reference                       ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+INSTALLATION:
+  Already installed at: ~/.claude/skills/claude-project-sessions.sh
+  Documentation: ~/.claude/skills/claude-sessions.md
+
+QUICK START:
+
+  1. Start a Claude session for a project:
+     source ~/.claude/skills/claude-project-sessions.sh
+     start-claude-project floads
+
+  2. List all sessions:
+     list-claude-sessions
+
+  3. Check status:
+     claude-session-status
+
+  4. Connect to remote dev container:
+     remote-claude-session 192.168.160.251 floads
+
+TMUX & ATTACHMENT:
+
+  Sessions run in tmux windows - you can attach and interact:
+
+  tmux list-windows -t claude       # List all project windows
+  tmux attach -t claude:floads      # Attach to floads session
+
+  Sessions auto-register and appear in web UI:
+
+  ls ~/.claude/sessions/            # List active session files
+  jq '.name' ~/.claude/sessions/*.json  # Show all session names
+
+PERMISSION MODES:
+
+  Normal:   start-claude-project floads
+  Elevated: start-claude-project floads --elevate
+  Remote:   start-claude-project floads --remote 192.168.160.251
+
+CONFIGURATION FILES:
+
+  Session mappings: ~/.claude/session-restore-map.json
+  Project paths:    ~/.claude/project-sessions.json
+  Logs:             ~/.claude/project-sessions.log
+
+SUPPORTED PROJECTS (in ~/src/):
+
+  ✓ floads           - Main project
+  ✓ flamelet-iwf     - IWF infrastructure
+  ✓ flamelet-dcx     - Data Center X
+  ✓ flamelet-kbe     - Kumbe infrastructure
+
+REMOTE HOSTS:
+
+  Dev container:  192.168.160.251
+  SSH user:       syseng
+  Connection:     ssh syseng@192.168.160.251
+
+EXAMPLES:
+
+  # Start local session
+  start-claude-project floads
+
+  # List all sessions
+  list-claude-sessions
+
+  # Remote session on dev container
+  remote-claude-session 192.168.160.251 floads
+
+  # Elevated session (sudo)
+  start-claude-project floads --elevate
+
+  # Restore all sessions after reboot
+  restore-claude-sessions --remote 192.168.160.251
+
+TROUBLESHOOTING:
+
+  Check status:  claude-session-status
+  View logs:     tail -f ~/.claude/project-sessions.log
+  List sessions: list-claude-sessions
+  Test SSH:      ssh syseng@192.168.160.251 echo ok
+
+INTEGRATION POINTS:
+
+  • Tmux: Sessions created in "claude" tmux session
+  • Claude CLI: Uses "claude code <path>" for each project
+  • Flamelet: Can run flamelet commands within session
+  • SSH: Supports both local and remote dev container
+  • Systemd: Integrates with tmux-claude service management
+
+For detailed documentation, see:
+  ~/.claude/skills/claude-sessions.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Created: 2026-07-24
+Skill Version: 1.0.0
