@@ -207,12 +207,32 @@ tmux attach -t tcsm:myproject
 - ✅ Start, stop, and restart sessions
 - ✅ Auto-registration with Claude CLI
 - ✅ Web UI integration via bridgeSessionId
-- ✅ Workspace trust pre-configured (no dialogs on startup)
+- ✅ Workspace trust pre-configured (see [Known Issues & Workarounds](#known-issues--workarounds))
+- ✅ Git-aware project discovery (auto-fallback to real source repos)
 - ✅ Project path resolution from configuration
 - ✅ Support for local and elevated (sudo) operations
 - ✅ Multi-project support with flexible naming
 
 See `skills/README.md` for detailed documentation.
+
+#### 1a. **Git-Aware Project Discovery**
+
+When `tcsm-start` resolves a project directory, it checks whether that directory is under git control. If not, it automatically searches `TCSM_SEARCH_ROOTS` for a same-named directory that is and uses that instead.
+
+**Use case**: Flamelet tenants often exist as configuration stubs (e.g., `~/.flamelet/tenant/flamelet-kbe` with just `config.sh`) before the actual source repository is cloned elsewhere (e.g., `~/src/flamelet-kbe`). Running `tcsm-start flamelet-kbe` will find and use the real git-controlled source automatically.
+
+```bash
+# Example: flamelet-kbe doesn't exist as a git repo, but tcsm-start finds it elsewhere
+$ tcsm-start flamelet-kbe
+[INFO] No git-controlled source folder found for 'flamelet-kbe'...
+       continuing with /home/syseng/.flamelet/tenant/flamelet-kbe
+
+# If it existed at ~/src/flamelet-kbe, it would log:
+[INFO] '~/.flamelet/tenant/flamelet-kbe' is not under git control;
+       using git-controlled source instead: ~/src/flamelet-kbe
+```
+
+Configure search roots via `TCSM_SEARCH_ROOTS` (space-separated paths, default: `$HOME/src $HOME/.flamelet/tenant`).
 
 #### 2. **Configuration Management** (`config/`)
 
@@ -232,10 +252,9 @@ vim ~/.claude/tcsm-projects.json
 - `accounts.json` - Claude account configuration
 - `.template` files - Templates with examples
 
-Environment variable overrides:
+Environment variable override example:
 ```bash
-PROJECT_CONFIG_FILE=/custom/path tcsm-start myproject
-SKILLS_DEST=/custom/skills tcsm-start myproject
+SKILLS_DEST=/custom/skills bash install.sh
 ```
 
 #### 3. **Installation Script** (`install.sh`)
@@ -283,12 +302,26 @@ Session name format: `<tenant>-tcsm` (tcsm = tmux-claude-session-manager)
 
 Example across three development VMs:
 
+**dev.myproject:**
 ```
-VM: dev.myproject         VM: staging.myproject     VM: prod-infra
-Session: dev-tcsm      Session: staging-tcsm  Session: prod-tcsm
-├─ myproject              ├─ staging-myproject      ├─ infrastructure-project
-├─ infrastructure-project        └─ staging-api         └─ infrastructure
+Session: dev-tcsm
+├─ myproject
+├─ infrastructure-project
 └─ synthesia
+```
+
+**staging.myproject:**
+```
+Session: staging-tcsm
+├─ staging-myproject
+└─ staging-api
+```
+
+**prod-infra:**
+```
+Session: prod-tcsm
+├─ infrastructure-project
+└─ infrastructure
 ```
 
 Each VM independently manages its Claude sessions using the same skill.
@@ -304,9 +337,6 @@ export SKILLS_DEST=/opt/claude/skills
 # Custom config location
 export CONFIG_DEST=/etc/claude
 
-# Custom Claude binary location
-export CLAUDE_BIN=/custom/bin/claude
-
 # Tenant identifier (for multi-tenant setups)
 export TENANT=production
 
@@ -316,6 +346,18 @@ export TCSM_SEARCH_ROOTS="$HOME/src $HOME/.flamelet/tenant /custom/projects"
 
 bash install.sh
 ```
+
+### Known Issues & Workarounds
+
+#### Workspace Trust Dialog Reappears on Session Start
+
+**Issue**: Claude Code has a [known bug](https://github.com/anthropics/claude-code/issues/9113) where the workspace trust dialog reappears even when `hasTrustDialogAccepted` is already set in `~/.claude.json`.
+
+**Workaround**: `tcsm-start` includes an additional step after pre-configuring workspace trust: it explicitly calls `claude config set workspaceTrustSettings."$project_dir".hasTrustDialogAccepted true` to ensure Claude reads the trust setting before presenting the interactive confirmation dialog. This reduces (but doesn't fully eliminate) the prompt on first start.
+
+**What to do**: If the trust prompt still appears on initial session start, answer "Yes, I trust this folder" once. Future restarts of the same project should skip the prompt.
+
+**Note**: This is a workaround for an upstream Claude Code issue. If Claude Code fixes the underlying bug, this workaround becomes a harmless no-op.
 
 ### Documentation
 
