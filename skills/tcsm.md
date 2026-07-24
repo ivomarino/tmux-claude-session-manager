@@ -27,7 +27,7 @@ tcsm-start myproject
 # Start with elevated permissions (sudo)
 tcsm-start myproject --elevate
 
-# Stop a running Claude session
+# Stop a running Claude session (graceful shutdown)
 tcsm-stop myproject
 
 # Restart a Claude session
@@ -39,6 +39,28 @@ tcsm-list
 # Show session health status
 tcsm-status
 ```
+
+#### Session Lifecycle
+
+**Start (`tcsm-start`):**
+- Creates tmux window under `tcsm` session
+- Pre-trusts workspace to avoid confirmation dialogs
+- Launches Claude CLI interactively
+- Auto-registers with Claude (creates session file)
+- Waits for Claude registration before returning
+
+**Stop (`tcsm-stop`):**
+- Gracefully terminates Claude process (SIGINT → SIGTERM → SIGKILL)
+- Cleans up tmux window
+- Removes session registration files
+- Allows 5-second grace period for Claude to save state
+- Falls back to force-kill if graceful shutdown times out
+
+**Restart (`tcsm-restart`):**
+- Stops the current session (see above)
+- Waits briefly for cleanup
+- Starts a fresh session (see above)
+- Useful for config changes or recovery
 
 ### Remote Operations
 
@@ -288,6 +310,19 @@ tcsm-start myproject
 1. Check sudoers: `sudo -l`
 2. Verify claude binary in sudoers: `sudo /root/.local/bin/claude --version`
 3. Add to sudoers if needed (with `visudo`)
+
+### Path display issue for self-hosted GitLab
+**Issue:** Claude Code web UI shows GitLab organization/namespace instead of project name  
+**Example:** For `git@git.iwf.io:infrastructure/flamelet-iwf.git`, displays "infrastructure" instead of "flamelet-iwf"
+
+**Root cause:** Claude Code parses the git remote URL and extracts the organization namespace. This is technically correct for standard GitLab URLs (`git@gitlab.com:org/project`) but shows the wrong value when the organization/namespace doesn't match the project name.
+
+**Workaround:** This is a Claude Code limitation, not a tcsm issue. The session still works correctly; only the path display in the web UI is affected.
+
+**Mitigation options:**
+1. Use HTTPS remotes instead of SSH (may change display but not guaranteed)
+2. File an issue with Claude Code for better namespace handling
+3. Accept the display limitation (functionality is unaffected)
 
 ## Performance
 

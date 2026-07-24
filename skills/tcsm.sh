@@ -296,40 +296,61 @@ tcsm-stop() {
 
   # Check if tmux window exists
   if tmux list-windows -t "tcsm:$window_name" &>/dev/null 2>&1; then
-    # Get the pane PID before killing the window
+    # Get the pane PID before anything else
     local pane_pid=$(tmux display-message -t "tcsm:$window_name" -p '#{pane_pid}' 2>/dev/null)
 
-    # Kill the tmux window
-    if tmux kill-window -t "tcsm:$window_name"; then
-      # Kill the Claude process explicitly (in case it detached from tmux)
-      if [[ -n "$pane_pid" ]] && kill "$pane_pid" 2>/dev/null; then
-        log_session "INFO" "Killed Claude process: $pane_pid"
-      fi
+    # Graceful shutdown: signal escalation with timeouts
+    if [[ -n "$pane_pid" ]]; then
+      # Step 1: Send Ctrl-C (SIGINT) - ask Claude to exit gracefully
+      log_session "INFO" "Sending SIGINT (Ctrl-C) to process $pane_pid"
+      tmux send-keys -t "tcsm:$window_name" C-c
 
-      # Kill any remaining claude processes for this project
-      pkill -f "claude.*--name $project" 2>/dev/null || true
-
-      # Clean up Claude session files to force fresh registration on restart
-      sleep 0.5
-      # Remove ONLY session files where name EXACTLY matches this project (via jq)
-      # Use jq to ensure we don't delete files from other sessions with similar names
-      for sessfile in "$HOME/.claude/sessions"/*.json; do
-        if [[ -f "$sessfile" ]]; then
-          # Only delete if name matches EXACTLY
-          if jq -e ".name == \"$project\"" "$sessfile" &>/dev/null; then
-            rm -f "$sessfile"
-            log_session "INFO" "Cleaned session file: $(basename $sessfile)"
-          fi
+      # Step 2: Wait up to 5 seconds for graceful exit
+      local wait_count=0
+      while [[ $wait_count -lt 50 ]]; do
+        if ! kill -0 "$pane_pid" 2>/dev/null; then
+          log_session "OK" "Process $pane_pid exited gracefully"
+          break
         fi
+        sleep 0.1
+        ((wait_count++))
       done
 
-      log_session "OK" "Stopped Claude session: $project"
-      echo -e "${GREEN}✓${NC} Claude session stopped for ${BLUE}$project${NC}"
-      return 0
-    else
-      log_session "ERROR" "Failed to kill window: tcsm:$window_name"
-      return 1
+      # Step 3: If still running, escalate to SIGTERM
+      if kill -0 "$pane_pid" 2>/dev/null; then
+        log_session "INFO" "Process didn't exit; sending SIGTERM to $pane_pid"
+        kill -TERM "$pane_pid" 2>/dev/null || true
+        sleep 2
+      fi
+
+      # Step 4: Final resort - SIGKILL
+      if kill -0 "$pane_pid" 2>/dev/null; then
+        log_session "WARN" "Process still running; forcing SIGKILL on $pane_pid"
+        kill -KILL "$pane_pid" 2>/dev/null || true
+      fi
     fi
+
+    # Kill any remaining claude processes for this project (cleanup)
+    pkill -f "claude.*--name $project" 2>/dev/null || true
+
+    # Clean up the tmux window
+    tmux kill-window -t "tcsm:$window_name" 2>/dev/null || true
+
+    # Clean up Claude session files to force fresh registration on restart
+    # Remove ONLY session files where name EXACTLY matches this project (via jq)
+    for sessfile in "$HOME/.claude/sessions"/*.json; do
+      if [[ -f "$sessfile" ]]; then
+        # Only delete if name matches EXACTLY
+        if jq -e ".name == \"$project\"" "$sessfile" &>/dev/null; then
+          rm -f "$sessfile"
+          log_session "INFO" "Cleaned session file: $(basename $sessfile)"
+        fi
+      fi
+    done
+
+    log_session "OK" "Stopped Claude session: $project"
+    echo -e "${GREEN}✓${NC} Claude session stopped for ${BLUE}$project${NC}"
+    return 0
   else
     log_session "INFO" "Session not running: $project"
     echo -e "${YELLOW}ℹ${NC} Session not running: ${BLUE}$project${NC}"
