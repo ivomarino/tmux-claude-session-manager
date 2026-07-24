@@ -104,6 +104,21 @@ Override default project directory resolution:
 }
 ```
 
+### Git-Aware Project Discovery
+When `tcsm-start` resolves a project directory, it checks if that directory is under git control. If not, it automatically searches for a git-controlled directory with the same name in the configured search roots and uses that instead (silently, or with a log message if no match is found).
+
+This is useful for flamelet tenants that exist as configuration stubs before their actual source repositories are cloned. For example, if you run `tcsm-start flamelet-kbe` but `~/.flamelet/tenant/flamelet-kbe` is just a stub directory without `.git`, the skill will look for `flamelet-kbe` in other search roots and switch to that if found.
+
+**Search roots** are configured via the `TCSM_SEARCH_ROOTS` environment variable (space-separated paths):
+```bash
+# Default (can be overridden):
+TCSM_SEARCH_ROOTS="$HOME/src $HOME/.flamelet/tenant"
+
+# Example: add a custom root
+export TCSM_SEARCH_ROOTS="$HOME/src $HOME/.flamelet/tenant /custom/projects"
+tcsm-start myproject
+```
+
 ## Prerequisites
 
 - `tmux` - Terminal multiplexer for session management

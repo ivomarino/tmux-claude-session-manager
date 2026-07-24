@@ -310,6 +310,10 @@ export CLAUDE_BIN=/custom/bin/claude
 # Tenant identifier (for multi-tenant setups)
 export TENANT=production
 
+# Git-aware project discovery: search roots
+# (space-separated paths where tcsm-start looks for git-controlled source folders)
+export TCSM_SEARCH_ROOTS="$HOME/src $HOME/.flamelet/tenant /custom/projects"
+
 bash install.sh
 ```
 

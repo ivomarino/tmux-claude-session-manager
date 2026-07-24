@@ -11,6 +11,10 @@
 #   tcsm-restore [--remote <host>] [--dry-run]
 #   tcsm-status [--remote <host>]
 #   tcsm-remote <host> <project> [--elevate]
+#
+# Configuration (via environment variables):
+#   TCSM_SEARCH_ROOTS - Space-separated paths to search for git-controlled project dirs
+#                       (default: $HOME/src $HOME/.flamelet/tenant)
 
 set -uo pipefail
 
@@ -19,6 +23,7 @@ CLAUDE_HOME="${CLAUDE_HOME:-.claude}"
 TCSM_SESSION_MAP="$HOME/$CLAUDE_HOME/tcsm-session-map.json"
 TCSM_PROJECT_MAP="$HOME/$CLAUDE_HOME/tcsm-projects.json"
 TCSM_LOG_FILE="$HOME/$CLAUDE_HOME/tcsm.log"
+TCSM_SEARCH_ROOTS="${TCSM_SEARCH_ROOTS:-$HOME/src $HOME/.flamelet/tenant}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -92,6 +97,19 @@ EOF
   fi
 }
 
+# Search TCSM_SEARCH_ROOTS for a git-controlled directory exactly named $1
+tcsm-find-git-dir() {
+  local project="$1" root candidate
+  for root in $TCSM_SEARCH_ROOTS; do
+    candidate="$root/$project"
+    if [[ -d "$candidate" ]] && git -C "$candidate" rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
 # Start a Claude session for a project
 tcsm-start() {
   local project="${1:?Project name required}"
@@ -134,6 +152,18 @@ tcsm-start() {
     else
       log_session "ERROR" "Project directory not found: $project"
       return 1
+    fi
+  fi
+
+  # If the resolved directory isn't a git working tree, look for a
+  # git-controlled sibling among TCSM_SEARCH_ROOTS and prefer that instead.
+  if ! git -C "$project_dir" rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
+    local git_dir
+    if git_dir=$(tcsm-find-git-dir "$project"); then
+      log_session "INFO" "'$project_dir' is not under git control; using git-controlled source instead: $git_dir"
+      project_dir="$git_dir"
+    else
+      log_session "INFO" "No git-controlled source folder found for '$project' in TCSM_SEARCH_ROOTS ($TCSM_SEARCH_ROOTS); continuing with $project_dir"
     fi
   fi
 
@@ -454,6 +484,12 @@ CONFIGURATION:
   Session mappings: $HOME/.claude/tcsm-session-map.json
   Project paths:    $HOME/.claude/tcsm-projects.json
   Log file:         $HOME/.claude/tcsm.log
+
+ENVIRONMENT VARIABLES:
+  TCSM_SEARCH_ROOTS - Space-separated directories to search for git-controlled project folders
+                      (default: \$HOME/src \$HOME/.flamelet/tenant)
+                      When tcsm-start resolves a project directory that isn't under git control,
+                      it searches these roots for a matching folder that is, and uses that instead.
 EOF
       ;;
   esac
