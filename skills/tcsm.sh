@@ -279,23 +279,29 @@ tcsm-stop() {
 
   # Check if tmux window exists
   if tmux list-windows -t "tcsm:$window_name" &>/dev/null 2>&1; then
-    # Get the pane PID and find associated Claude sessions
+    # Get the pane PID before killing the window
     local pane_pid=$(tmux display-message -t "tcsm:$window_name" -p '#{pane_pid}' 2>/dev/null)
 
-    # Kill the tmux window (which terminates Claude)
+    # Kill the tmux window
     if tmux kill-window -t "tcsm:$window_name"; then
-      # Clean up Claude session files for this specific session to force fresh registration
-      if [[ -n "$pane_pid" ]]; then
-        sleep 0.5
-        # Remove session files that match this project name
-        rm -f "$HOME/.claude/sessions"/*"${project}"* 2>/dev/null || true
-        # Also clean any orphaned sessions by searching for name match
-        for sessfile in "$HOME/.claude/sessions"/*.json; do
-          if [[ -f "$sessfile" ]]; then
-            jq -e ".name == \"$project\"" "$sessfile" &>/dev/null && rm -f "$sessfile"
-          fi
-        done
+      # Kill the Claude process explicitly (in case it detached from tmux)
+      if [[ -n "$pane_pid" ]] && kill "$pane_pid" 2>/dev/null; then
+        log_session "INFO" "Killed Claude process: $pane_pid"
       fi
+
+      # Kill any remaining claude processes for this project
+      pkill -f "claude.*--name $project" 2>/dev/null || true
+
+      # Clean up Claude session files to force fresh registration on restart
+      sleep 0.5
+      # Remove session files that match this project name
+      rm -f "$HOME/.claude/sessions"/*"${project}"* 2>/dev/null || true
+      # Also clean any orphaned sessions by searching for name match
+      for sessfile in "$HOME/.claude/sessions"/*.json; do
+        if [[ -f "$sessfile" ]]; then
+          jq -e ".name == \"$project\"" "$sessfile" &>/dev/null && rm -f "$sessfile"
+        fi
+      done
 
       log_session "OK" "Stopped Claude session: $project"
       echo -e "${GREEN}✓${NC} Claude session stopped for ${BLUE}$project${NC}"
