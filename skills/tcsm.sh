@@ -4,12 +4,13 @@
 # Usage: source this file or call functions directly
 #
 # Functions:
-#   tcsm-start <project> [--elevate] [--remote <host>]
+#   tcsm-start <project> [--elevate] [--remote <host>] [--account <id>]
 #   tcsm-stop <project> [--remote <host>]
 #   tcsm-restart <project> [--elevate] [--remote <host>]
 #   tcsm-list [--remote <host>]
 #   tcsm-restore [--remote <host>] [--dry-run]
 #   tcsm-status [--remote <host>]
+#   tcsm-doctor [--fix] [--check TYPE] [-v]
 #   tcsm-remote <host> <project> [--elevate]
 #
 # Configuration (via environment variables):
@@ -673,6 +674,22 @@ ENVIRONMENT VARIABLES:
 EOF
       ;;
   esac
+}
+
+# Health check and cleanup utility for sessions
+tcsm-doctor() {
+  local skill_dir
+  skill_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  if [[ ! -f "$skill_dir/tcsm-doctor.sh" ]]; then
+    log_session "ERROR" "tcsm-doctor.sh not found in $skill_dir"
+    echo -e "${RED}✗${NC} Doctor utility not installed"
+    return 1
+  fi
+
+  # Source and run doctor script
+  bash "$skill_dir/tcsm-doctor.sh" "$@"
+  return $?
 }
 
 # Only run main if this script is invoked directly (not sourced)
