@@ -150,6 +150,74 @@ tcsm-restore --dry-run
 tcsm-restore --remote <remote-host-ip>
 ```
 
+### Health Checks & Diagnostics
+
+**tcsm-doctor** performs comprehensive health checks and optional repairs:
+
+```bash
+# Run all health checks (read-only, default)
+tcsm-doctor
+
+# Verbose output with details
+tcsm-doctor -v
+
+# Check specific areas only
+tcsm-doctor --check sessions      # Registry/Tmux consistency
+tcsm-doctor --check git           # Git repo validation
+tcsm-doctor --check accounts      # Account validity
+tcsm-doctor --check orphans       # Orphaned processes/windows
+
+# Preview fixes without applying
+tcsm-doctor --fix --dry-run
+
+# Auto-fix detected issues
+tcsm-doctor --fix
+tcsm-doctor --fix --force         # Skip confirmations
+```
+
+**Checks Performed:**
+
+**Tier 1 (Critical):**
+- Registry → Tmux: All sessions have active windows
+- Tmux → Registry: All windows are registered
+- Git validation: All session paths are git-controlled
+- Duplicate detection: No duplicate session names
+
+**Tier 2 (Account/Process):**
+- Account validity: Sessions use active accounts
+- Rate limit consistency: Tiers match configuration
+- Orphaned processes: Find abandoned Claude processes
+- File permissions: ~/.claude/ is readable/writable
+
+**Tier 3 (Data Quality):**
+- Log file health: Size and readability
+- Map integrity: Valid JSON and schema compliance
+
+**Example Output:**
+```
+=== Critical Registry/Tmux Checks ===
+  ✓ Registry → Tmux (8 sessions have windows)
+  ✗ Tmux → Registry (1 orphaned window: stale-project)
+  ✓ Git validation (8 paths are git-controlled)
+  ✓ No duplicate session names
+
+=== Account/Process Integrity ===
+  ✓ Account validity (all sessions use active accounts)
+  ⚠ Orphaned processes (1 abandoned Claude process)
+  ✓ File permissions OK (~/.claude/ is 700)
+
+=== Data Quality ===
+  ✓ Log file healthy (1.2MB)
+  ✓ Session map integrity OK
+
+Status: ⚠ WARNING (1 warning, 0 critical issues)
+```
+
+**Exit Codes:**
+- `0` - OK (all checks passed)
+- `1` - ERROR (critical issues found)
+- `2` - WARNING (non-critical issues found)
+
 ## Configuration
 
 ### Session Mapping (`~/.claude/tcsm-session-map.json`)
@@ -347,11 +415,36 @@ tcsm-start myproject
 
 ## Troubleshooting
 
+### Quick Diagnostics
+
+Start with **tcsm-doctor** to diagnose system health:
+
+```bash
+# Run automatic checks
+tcsm-doctor
+
+# Verbose output with details
+tcsm-doctor -v
+
+# Check specific areas
+tcsm-doctor --check accounts    # Check account configuration
+tcsm-doctor --check git         # Validate git repositories
+tcsm-doctor --check orphans     # Find orphaned processes
+```
+
+This will identify:
+- Registry/Tmux mismatches
+- Account validity issues
+- Orphaned processes or windows
+- File permission problems
+- Data integrity issues
+
 ### Session not appearing
-1. Check prerequisites: `claude`, `tmux`, `jq`
-2. Verify mapping: `jq . ~/.claude/tcsm-session-map.json`
-3. Check logs: `tail ~/.claude/tcsm.log`
-4. Test tmux: `tmux list-sessions`
+1. Run **tcsm-doctor** to identify issues
+2. Check prerequisites: `claude`, `tmux`, `jq`
+3. Verify mapping: `jq . ~/.claude/tcsm-session-map.json`
+4. Check logs: `tail ~/.claude/tcsm.log`
+5. Test tmux: `tmux list-sessions`
 
 ### Remote connection fails
 1. Test SSH: `ssh your-user@<remote-host-ip> echo ok`
@@ -383,6 +476,37 @@ tcsm-start myproject
 - Remote connection: 1-3 seconds (depending on SSH latency)
 - Session restoration: 100ms per session + parallel startup
 - Mapping file: < 50ms for updates
+
+## What's New in v2.0
+
+### Multi-Account Support
+- Start sessions with specific accounts: `tcsm-start project --account secondary`
+- View account per session in `tcsm-list` output
+- Rate limit tier tracking and display
+- Account validation and inactive account detection
+
+### Graceful Shutdown
+- `tcsm-stop` now gracefully terminates Claude (SIGINT → SIGTERM → SIGKILL)
+- 5-second grace period for Claude to save state
+- Intelligent escalation prevents orphaned processes
+
+### Health Diagnostics
+- New `tcsm-doctor` command for comprehensive checks
+- Detects registry/tmux mismatches
+- Validates git repositories and accounts
+- Identifies orphaned processes and windows
+- Optional auto-fix capability with `--fix` flag
+
+### Enhanced Display
+- `tcsm-list` shows Account and Rate Limit Tier columns
+- `tcsm-status` displays per-session account information
+- Color-coded output for better readability
+
+### Other Improvements
+- Git-aware project discovery auto-fallback
+- Improved logging with `log_session()` function
+- Session registration wait ensures web UI sync
+- Backward compatible with v1.x configurations
 
 ## Workspace Trust
 
