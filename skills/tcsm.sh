@@ -119,6 +119,38 @@ EOF
   fi
 }
 
+# Validate that an account exists and is active
+validate_account() {
+  local account_id="$1"
+  local accounts_file="$HOME/$CLAUDE_HOME/accounts.json"
+
+  [[ ! -f "$accounts_file" ]] && return 1
+
+  # Check if account exists and is active
+  jq -e ".accounts[] | select(.id == \"$account_id\" and .active == true)" "$accounts_file" &>/dev/null
+  return $?
+}
+
+# Get rate limit tier for an account
+get_rate_limit_tier() {
+  local account_id="$1"
+  local accounts_file="$HOME/$CLAUDE_HOME/accounts.json"
+
+  [[ ! -f "$accounts_file" ]] && echo "unknown" && return 0
+
+  jq -r ".accounts[] | select(.id == \"$account_id\") | .rate_limit_tier // \"unknown\"" "$accounts_file" 2>/dev/null || echo "unknown"
+}
+
+# Get account display info (label from metadata.organization)
+get_account_display() {
+  local account_id="$1"
+  local accounts_file="$HOME/$CLAUDE_HOME/accounts.json"
+
+  [[ ! -f "$accounts_file" ]] && echo "$account_id" && return 0
+
+  jq -r ".accounts[] | select(.id == \"$account_id\") | .metadata.organization // .id" "$accounts_file" 2>/dev/null || echo "$account_id"
+}
+
 # Search TCSM_SEARCH_ROOTS for a git-controlled directory exactly named $1
 tcsm-find-git-dir() {
   local project="$1" root candidate
@@ -137,21 +169,30 @@ tcsm-start() {
   local project="${1:?Project name required}"
   local elevate=false
   local remote=""
+  local account="primary"
 
   # Parse options
   while [[ $# -gt 1 ]]; do
     case "$2" in
       --elevate) elevate=true ;;
       --remote) remote="$3"; shift ;;
+      --account) account="$3"; shift ;;
       *) echo "Unknown option: $2" >&2; return 1 ;;
     esac
     shift
   done
 
-  # If remote, delegate to remote host
+  # If remote, delegate to remote host (pass account through)
   if [[ -n "$remote" ]]; then
-    tcsm-remote "$remote" "$project" $([ "$elevate" = true ] && echo "--elevate")
+    tcsm-remote "$remote" "$project" $([ "$elevate" = true ] && echo "--elevate") --account "$account"
     return $?
+  fi
+
+  # Validate account
+  if ! validate_account "$account"; then
+    log_session "ERROR" "Invalid or inactive account: $account"
+    echo -e "${RED}✗${NC} Account not found or inactive: ${YELLOW}$account${NC}"
+    return 1
   fi
 
   check_prerequisites || return 1
@@ -234,11 +275,15 @@ tcsm-start() {
   local claude_cmd="claude --model haiku --permission-mode bypassPermissions --remote-control --name $project"
   [[ "$elevate" = true ]] && claude_cmd="sudo $claude_cmd"
 
+  # Get rate limit tier for account
+  local rate_limit_tier
+  rate_limit_tier=$(get_rate_limit_tier "$account")
+
   # Send Claude command to tmux window (runs interactively)
   if tmux send-keys -t "tcsm:$window_name" "$claude_cmd" Enter; then
-    # Update session map
-    jq --arg proj "$project" --arg path "$project_dir" \
-      '.sessions[$proj] = {id: $proj, path: $path, window: $proj, created: now}' \
+    # Update session map with account and rate limit info
+    jq --arg proj "$project" --arg path "$project_dir" --arg acct "$account" --arg tier "$rate_limit_tier" \
+      '.sessions[$proj] = {id: $proj, path: $path, window: $proj, account: $acct, rate_limit_tier: $tier, created: now}' \
       "$TCSM_SESSION_MAP" > "${TCSM_SESSION_MAP}.tmp" && mv "${TCSM_SESSION_MAP}.tmp" "$TCSM_SESSION_MAP"
 
     # Wait for Claude to register the session (creates ~/.claude/sessions/*.json)
@@ -412,22 +457,32 @@ tcsm-list() {
     return 0
   fi
 
-  echo -e "${BLUE}Project${NC:30} ${BLUE}Window${NC:20} ${BLUE}Status${NC:15} ${BLUE}Path${NC}"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo -e "${BLUE}Project${NC:25} ${BLUE}Window${NC:18} ${BLUE}Status${NC:12} ${BLUE}Account${NC:15} ${BLUE}Rate Limit${NC:20} ${BLUE}Path${NC}"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
   jq -r '.sessions | to_entries[] |
-    "\(.key)\t\(.value.window)\t\(.value.id | .[0:8])\t\(.value.path)"' "$TCSM_SESSION_MAP" | \
-  while IFS=$'\t' read -r project window id path; do
+    "\(.key)\t\(.value.window)\t\(.value.account // "primary")\t\(.value.rate_limit_tier // "unknown")\t\(.value.path)"' "$TCSM_SESSION_MAP" | \
+  while IFS=$'\t' read -r project window account rate_limit path; do
     # Check if window exists in tmux
     local status="inactive"
     if tmux list-windows -t "tcsm:$window" &>/dev/null 2>&1; then
       status="${GREEN}active${NC}"
     fi
 
-    printf "%-30s %-20s %-15b %s\n" \
+    # Get account display name
+    local account_display
+    account_display=$(get_account_display "$account")
+
+    # Format rate limit (abbreviated for display)
+    local rate_display="${rate_limit//default_claude_/}"
+    rate_display="${rate_display//default_/}"
+
+    printf "%-25s %-18s %-12b %-15s %-20s %s\n" \
       "${BLUE}$project${NC}" \
       "${YELLOW}$window${NC}" \
       "$status" \
+      "$account_display" \
+      "$rate_display" \
       "$path"
   done
 
@@ -515,6 +570,21 @@ tcsm-status() {
   fi
 
   echo ""
+
+  # Show per-session account and rate limit info
+  if [[ $mapped -gt 0 ]]; then
+    echo -e "${BLUE}=== Session Account Info ===${NC}"
+    jq -r '.sessions | to_entries[] |
+      "\(.key)\t\(.value.account // "primary")\t\(.value.rate_limit_tier // "unknown")"' "$TCSM_SESSION_MAP" | \
+    while IFS=$'\t' read -r project account rate_limit; do
+      local account_display
+      account_display=$(get_account_display "$account")
+      local rate_display="${rate_limit//default_claude_/}"
+      rate_display="${rate_display//default_/}"
+      printf "  %-25s %-15s %s\n" "$project" "$account_display" "$rate_display"
+    done
+    echo ""
+  fi
 }
 
 # Connect to remote host and start Claude session

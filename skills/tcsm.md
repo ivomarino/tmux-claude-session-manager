@@ -21,11 +21,17 @@ Sessions run interactively in tmux windows (organized under the `tcsm` session) 
 ### Basic Commands
 
 ```bash
-# Start a Claude session for a project
+# Start a Claude session for a project (uses primary account by default)
 tcsm-start myproject
+
+# Start with specific account
+tcsm-start myproject --account primary
 
 # Start with elevated permissions (sudo)
 tcsm-start myproject --elevate
+
+# Combine account and elevated
+tcsm-start myproject --account primary --elevate
 
 # Stop a running Claude session (graceful shutdown)
 tcsm-stop myproject
@@ -33,12 +39,59 @@ tcsm-stop myproject
 # Restart a Claude session
 tcsm-restart myproject
 
-# List all active Claude sessions
+# List all active Claude sessions with account info
 tcsm-list
 
-# Show session health status
+# Show session health status and per-session account info
 tcsm-status
 ```
+
+### Account Management
+
+TCSM sessions can be associated with specific Claude accounts for multi-account rate-limit tracking:
+
+```bash
+# Start session with primary account (default)
+tcsm-start myproject
+
+# Start session with specific account (if multiple accounts configured)
+tcsm-start myproject --account secondary
+
+# View account for each session
+tcsm-list
+# Shows: Project | Window | Status | Account | Rate Limit Tier | Path
+
+tcsm-status
+# Shows per-session account configuration
+```
+
+**Account Requirements:**
+- Account must exist in `~/.claude/accounts.json`
+- Account must be marked as `active: true`
+- Rate limit tier is displayed from account configuration
+- Default account is "primary" if not specified
+
+**Example accounts.json:**
+```json
+{
+  "accounts": [
+    {
+      "id": "primary",
+      "email": "user@example.com",
+      "active": true,
+      "rate_limit_tier": "default_claude_max_5x"
+    },
+    {
+      "id": "secondary",
+      "email": "user@secondary.com",
+      "active": false,
+      "rate_limit_tier": "default_claude_max_5x"
+    }
+  ]
+}
+```
+
+**Important Note:** The `--account` parameter is metadata-only. Claude CLI doesn't support account selection at launch time, so sessions use the default account configured in Claude Code. TCSM simply tracks and displays which account a session was *intended* to use for administrative and rate-limit tracking purposes.
 
 #### Session Lifecycle
 

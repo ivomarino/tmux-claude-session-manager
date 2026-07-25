@@ -212,6 +212,8 @@ tmux attach -t tcsm:myproject
 - ✅ Project path resolution from configuration
 - ✅ Support for local and elevated (sudo) operations
 - ✅ Multi-project support with flexible naming
+- ✅ Multi-account support with rate-limit tracking
+- ✅ Graceful session termination (signal escalation with timeout)
 
 See `skills/README.md` for detailed documentation.
 
@@ -233,6 +235,34 @@ $ tcsm-start flamelet-kbe
 ```
 
 Configure search roots via `TCSM_SEARCH_ROOTS` (space-separated paths, default: `$HOME/src $HOME/.flamelet/tenant`).
+
+#### 1b. **Multi-Account Support with Rate-Limit Tracking**
+
+Each TCSM session can be associated with a specific Claude account for administrative and rate-limit tracking:
+
+```bash
+# Start session with primary account (default)
+tcsm-start myproject
+
+# Start session with secondary account
+tcsm-start myproject --account secondary
+
+# View which account each session uses
+tcsm-list
+# Displays: Project | Window | Status | Account | Rate Limit Tier | Path
+
+tcsm-status
+# Shows per-session account configuration
+```
+
+**Features:**
+- Account selection via `--account <id>` parameter
+- Account validation: only active accounts allowed
+- Rate limit tier tracking from `~/.claude/accounts.json`
+- Display account organization name and rate limit in CLI output
+- **Note:** Account parameter is metadata-only; Claude CLI doesn't support account selection at launch
+
+**Use case**: Distribute session load across multiple Claude accounts to manage rate limits when running many parallel sessions.
 
 #### 2. **Configuration Management** (`config/`)
 
