@@ -54,7 +54,7 @@ tmux-claude-session-manager/
 ├── CHANGELOG.md                   # Version history and changes
 ├── README.md                      # Main documentation (with fork enhancements)
 ├── LICENSE                        # MIT license
-├── install.sh                     # Installation script
+├── install.sh                     # Installation script (creates $TENANT-tcsm session)
 │
 ├── skills/                        # TCSM Skill (Bash scripts)
 │   ├── tcsm.sh                   # Main skill implementation
@@ -101,6 +101,33 @@ tmux-claude-session-manager/
 - Complete history of changes and versions
 - Grouped by Added/Changed/Fixed/Removed
 - Timestamps and commit references
+
+## Session Naming and Cleanup
+
+### Session Architecture
+- **Main Session**: Created during installation with name `<TENANT>-tcsm` (e.g., `floads-tcsm`)
+  - This is a tmux session that acts as a container for all project windows
+  - Should NEVER be killed during normal operations
+  - Persists across project session lifecycle
+  
+- **Project Windows**: Created as child windows within the main session
+  - Named after the project (with `/` replaced by `-`)
+  - Window format: `$TCSM_SESSION:<project-name>`
+  - Example: `floads-tcsm:my-project`
+
+### Cleanup Safety
+
+When stopping a project session (`tcsm-stop`):
+1. Targets the specific pane process by PID
+2. Uses signal escalation: SIGINT (graceful) → SIGTERM → SIGKILL
+3. Kills only child processes of that specific pane (using `pgrep -P`)
+4. Removes only the project window from the main session
+5. **Never kills the main `$TENANT-tcsm` session itself**
+
+This architecture ensures:
+- No accidental termination of the main session during cleanup
+- Precise targeting of only the project's Claude process
+- Multiple projects can run concurrently in the same main session
 
 ## Common Development Tasks
 
@@ -197,6 +224,10 @@ ps aux | grep "claude --"
 
 ### Environment Variables
 ```bash
+# Tmux session configuration (set by install.sh, can be overridden)
+export TCSM_TENANT="floads"                    # Tenant name (default: dev)
+export TCSM_SESSION="floads-tcsm"              # Tmux session name (default: $TCSM_TENANT-tcsm)
+
 # Search roots for git-controlled projects
 export TCSM_SEARCH_ROOTS="$HOME/src $HOME/.flamelet/tenant"
 
@@ -204,6 +235,8 @@ export TCSM_SEARCH_ROOTS="$HOME/src $HOME/.flamelet/tenant"
 export SKILLS_DEST="$HOME/.claude/skills"
 export CONFIG_DEST="$HOME/.claude"
 ```
+
+**Note:** The main tmux session is always named `<TENANT>-tcsm` (e.g., `floads-tcsm`). Project windows are created as child windows within this session. The session itself should never be killed during normal operation.
 
 ## Testing Workflow
 

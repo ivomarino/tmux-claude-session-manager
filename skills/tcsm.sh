@@ -25,6 +25,8 @@ TCSM_SESSION_MAP="$HOME/$CLAUDE_HOME/tcsm-session-map.json"
 TCSM_PROJECT_MAP="$HOME/$CLAUDE_HOME/tcsm-projects.json"
 TCSM_LOG_FILE="$HOME/$CLAUDE_HOME/tcsm.log"
 TCSM_SEARCH_ROOTS="${TCSM_SEARCH_ROOTS:-$HOME/src $HOME/.flamelet/tenant}"
+TCSM_TENANT="${TCSM_TENANT:-dev}"
+TCSM_SESSION="${TCSM_SESSION:-$TCSM_TENANT-tcsm}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -68,7 +70,7 @@ cleanup_orphaned_sessions() {
 
     local window_name="${name//\//-}"
     # Check if corresponding tmux window exists
-    if ! tmux list-windows -t "tcsm:$window_name" &>/dev/null 2>&1; then
+    if ! tmux list-windows -t "$TCSM_SESSION:$window_name" &>/dev/null 2>&1; then
       rm -f "$sessfile"
       ((cleaned++))
     fi
@@ -252,15 +254,15 @@ tcsm-start() {
   local window_name="${project//\//-}"
 
   # Check if tmux window exists
-  if tmux list-windows -t "tcsm:$window_name" &>/dev/null 2>&1; then
-    log_session "INFO" "Window already exists: tcsm:$window_name"
+  if tmux list-windows -t "$TCSM_SESSION:$window_name" &>/dev/null 2>&1; then
+    log_session "INFO" "Window already exists: $TCSM_SESSION:$window_name"
   else
     # Create window in tcsm session
-    if ! tmux new-window -t tcsm -n "$window_name" -c "$project_dir"; then
+    if ! tmux new-window -t "$TCSM_SESSION" -n "$window_name" -c "$project_dir"; then
       log_session "ERROR" "Failed to create tmux window: $window_name"
       return 1
     fi
-    log_session "OK" "Created tmux window: tcsm:$window_name"
+    log_session "OK" "Created tmux window: $TCSM_SESSION:$window_name"
   fi
 
   # Pre-trust workspace to avoid trust dialog on startup
@@ -281,7 +283,7 @@ tcsm-start() {
   rate_limit_tier=$(get_rate_limit_tier "$account")
 
   # Send Claude command to tmux window (runs interactively)
-  if tmux send-keys -t "tcsm:$window_name" "$claude_cmd" Enter; then
+  if tmux send-keys -t "$TCSM_SESSION:$window_name" "$claude_cmd" Enter; then
     # Update session map with account and rate limit info
     jq --arg proj "$project" --arg path "$project_dir" --arg acct "$account" --arg tier "$rate_limit_tier" \
       '.sessions[$proj] = {id: $proj, path: $path, window: $proj, account: $acct, rate_limit_tier: $tier, created: now}' \
@@ -306,9 +308,9 @@ tcsm-start() {
 
     log_session "OK" "Started Claude session: $project"
     echo -e "${GREEN}✓${NC} Claude session started for ${BLUE}$project${NC}"
-    echo -e "  Window:  ${YELLOW}tcsm:$window_name${NC}"
+    echo -e "  Window:  ${YELLOW}$TCSM_SESSION:$window_name${NC}"
     echo -e "  Path:    ${YELLOW}$project_dir${NC}"
-    echo -e "  Attach:  ${YELLOW}tmux attach -t tcsm:$window_name${NC}"
+    echo -e "  Attach:  ${YELLOW}tmux attach -t $TCSM_SESSION:$window_name${NC}"
     return 0
   else
     log_session "ERROR" "Failed to send command to tmux window"
@@ -341,15 +343,15 @@ tcsm-stop() {
   local window_name="${project//\//-}"
 
   # Check if tmux window exists
-  if tmux list-windows -t "tcsm:$window_name" &>/dev/null 2>&1; then
+  if tmux list-windows -t "$TCSM_SESSION:$window_name" &>/dev/null 2>&1; then
     # Get the pane PID before anything else
-    local pane_pid=$(tmux display-message -t "tcsm:$window_name" -p '#{pane_pid}' 2>/dev/null)
+    local pane_pid=$(tmux display-message -t "$TCSM_SESSION:$window_name" -p '#{pane_pid}' 2>/dev/null)
 
     # Graceful shutdown: signal escalation with timeouts
     if [[ -n "$pane_pid" ]]; then
       # Step 1: Send Ctrl-C (SIGINT) - ask Claude to exit gracefully
       log_session "INFO" "Sending SIGINT (Ctrl-C) to process $pane_pid"
-      tmux send-keys -t "tcsm:$window_name" C-c
+      tmux send-keys -t "$TCSM_SESSION:$window_name" C-c
 
       # Step 2: Wait up to 5 seconds for graceful exit
       local wait_count=0
@@ -376,11 +378,16 @@ tcsm-stop() {
       fi
     fi
 
-    # Kill any remaining claude processes for this project (cleanup)
-    pkill -f "claude.*--name $project" 2>/dev/null || true
+    # Kill any child processes of the pane (using process substitution to be precise)
+    if [[ -n "$pane_pid" ]]; then
+      # Get all child processes of the pane and kill them explicitly
+      pgrep -P "$pane_pid" 2>/dev/null | xargs -r kill -TERM 2>/dev/null || true
+      sleep 1
+      pgrep -P "$pane_pid" 2>/dev/null | xargs -r kill -KILL 2>/dev/null || true
+    fi
 
-    # Clean up the tmux window
-    tmux kill-window -t "tcsm:$window_name" 2>/dev/null || true
+    # Clean up the tmux window (never clean up the main session itself)
+    tmux kill-window -t "$TCSM_SESSION:$window_name" 2>/dev/null || true
 
     # Clean up Claude session files to force fresh registration on restart
     # Remove ONLY session files where name EXACTLY matches this project (via jq)
@@ -466,7 +473,7 @@ tcsm-list() {
   while IFS=$'\t' read -r project window account rate_limit path; do
     # Check if window exists in tmux
     local status="inactive"
-    if tmux list-windows -t "tcsm:$window" &>/dev/null 2>&1; then
+    if tmux list-windows -t "$TCSM_SESSION:$window" &>/dev/null 2>&1; then
       status="${GREEN}active${NC}"
     fi
 
@@ -550,7 +557,7 @@ tcsm-status() {
   echo -e "${BLUE}=== TCSM Session Status ===${NC}\n"
 
   # Check tmux sessions
-  local tmux_sessions=$(tmux list-sessions 2>/dev/null | grep -c "tcsm:" || echo "0")
+  local tmux_sessions=$(tmux list-sessions 2>/dev/null | grep -c "$TCSM_SESSION:" || echo "0")
   echo -e "Tmux Sessions:        ${GREEN}$tmux_sessions${NC}"
 
   # Check mapped sessions
