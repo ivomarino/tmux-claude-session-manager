@@ -521,6 +521,16 @@ tcsm-restore() {
 
   log_session "INFO" "Starting session restoration..."
 
+  # Ensure main tmux session exists (critical for boot restoration)
+  if ! tmux list-sessions 2>/dev/null | grep -q "^$TCSM_SESSION:"; then
+    log_session "INFO" "Main session missing, creating: $TCSM_SESSION"
+    if ! tmux new-session -d -s "$TCSM_SESSION" -c "$HOME"; then
+      log_session "ERROR" "Failed to create main session: $TCSM_SESSION"
+      return 1
+    fi
+    log_session "OK" "Main session created: $TCSM_SESSION"
+  fi
+
   if [[ ! -f "$TCSM_SESSION_MAP" ]] || ! jq -e '.sessions | length > 0' "$TCSM_SESSION_MAP" &>/dev/null; then
     log_session "INFO" "No sessions to restore"
     return 0
