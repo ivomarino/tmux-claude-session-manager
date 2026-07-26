@@ -553,8 +553,14 @@ tcsm-restore() {
   log_session "INFO" "Restoring sessions by priority (critical first)..."
 
   # Sort by priority: critical first, then normal, then any others
+  # Use awk to sort: critical gets priority 0, normal gets 1, others get 2
   jq -r '.sessions | to_entries[] | "\(.value.priority // "normal")\t\(.key)\t\(.value.path)\t\(.value.window)\t\(.value.account // "primary")"' "$TCSM_SESSION_MAP" | \
-  sort -V -k1,1r | \
+  awk -F'\t' '{
+    if ($1 == "critical") prio = 0;
+    else if ($1 == "normal") prio = 1;
+    else prio = 2;
+    print prio"\t"$0
+  }' | sort -n -k1,1 | cut -f2- | \
   while IFS=$'\t' read -r priority project path window account; do
     if [[ "$dry_run" == "true" ]]; then
       log_session "DRY-RUN" "Would restore: $project [$priority] → $window"
