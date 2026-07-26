@@ -283,7 +283,12 @@ tcsm-start() {
 
   # Start Claude session interactively in tmux window
   # Interactive mode auto-registers session and allows attaching
-  local claude_cmd="claude --model haiku --permission-mode bypassPermissions --remote-control --name $project"
+  # For critical sessions, use the full TCSM session name (e.g., floads-tcsm)
+  # For normal sessions, use just the project name
+  local session_name="$project"
+  [[ "$priority" == "critical" ]] && session_name="$TCSM_SESSION"
+
+  local claude_cmd="claude --model haiku --permission-mode bypassPermissions --remote-control --name $session_name"
   [[ "$elevate" = true ]] && claude_cmd="sudo $claude_cmd"
 
   # Get rate limit tier for account
