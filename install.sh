@@ -70,38 +70,64 @@ for new_name in "${!template_map[@]}"; do
   fi
 done
 
-# Step 3: Create default session
-log "Creating tmux session: $SESSION_NAME..."
-if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
-  log "⚠ Session $SESSION_NAME already exists"
+# Step 3: Initialize session map and create critical management session
+log "Initializing TCSM infrastructure..."
+
+# Create session map if it doesn't exist
+mkdir -p "$CONFIG_DEST"
+if [[ ! -f "$CONFIG_DEST/tcsm-session-map.json" ]]; then
+  echo '{"sessions": {}}' > "$CONFIG_DEST/tcsm-session-map.json"
+  log "✓ Session map initialized"
+fi
+
+# Create the critical self-hosted TCSM management session
+log "Creating critical management session: $TENANT..."
+source "$SKILLS_DEST/tcsm.sh" || error "Failed to load tcsm skill"
+
+# Set environment for critical session
+export TCSM_TENANT="$TENANT"
+export TCSM_SESSION="$SESSION_NAME"
+export TCSM_CRITICAL_ACCOUNT="commentroversy"
+export TCSM_CRITICAL_PATH="$REPO_PATH"
+
+if tcsm-start "$TENANT" --account commentroversy --priority critical; then
+  log "✓ Critical management session created: $TENANT"
 else
-  if ! tmux new-session -d -s "$SESSION_NAME" -c "$REPO_PATH"; then
-    error "Failed to create tmux session"
-  fi
-  log "✓ Session created"
+  error "Failed to create critical management session"
 fi
 
 # Step 4: Optional systemd unit installation
 INSTALL_SYSTEMD="${INSTALL_SYSTEMD:-0}"
 if [[ "$INSTALL_SYSTEMD" == "1" ]]; then
-  log "Installing systemd unit for automatic session restoration on boot..."
+  log "Installing systemd units for automatic session restoration and supervision..."
   mkdir -p "$HOME/.config/systemd/user"
+
+  # Install restore service (runs once on boot)
   cp "$REPO_PATH/systemd/tcsm-restore.service" "$HOME/.config/systemd/user/tcsm-restore.service" || \
-    error "Failed to install systemd unit"
+    error "Failed to install tcsm-restore service"
+  log "✓ tcsm-restore.service installed"
+
+  # Install watch service (runs continuously to monitor critical sessions)
+  cp "$REPO_PATH/systemd/tcsm-watch.service" "$HOME/.config/systemd/user/tcsm-watch.service" || \
+    error "Failed to install tcsm-watch service"
+  log "✓ tcsm-watch.service installed"
+
   systemctl --user daemon-reload
-  log "✓ Systemd unit installed"
-  log "Enabling automatic restoration on boot..."
+
+  log "Enabling automatic restoration and supervision on boot..."
   systemctl --user enable --now tcsm-restore.service || \
-    error "Failed to enable systemd unit"
-  log "✓ Systemd unit enabled and started"
+    error "Failed to enable tcsm-restore service"
+  systemctl --user enable --now tcsm-watch.service || \
+    error "Failed to enable tcsm-watch service"
+  log "✓ Systemd units enabled and started"
 else
   log "Skipped systemd unit installation (INSTALL_SYSTEMD=0)"
-  log "To enable boot-time session restoration, run:"
+  log "To enable boot-time session restoration and supervision, run:"
   log "  INSTALL_SYSTEMD=1 bash install.sh"
   log "Or enable manually:"
-  log "  cp systemd/tcsm-restore.service ~/.config/systemd/user/"
+  log "  cp systemd/tcsm-*.service ~/.config/systemd/user/"
   log "  systemctl --user daemon-reload"
-  log "  systemctl --user enable --now tcsm-restore.service"
+  log "  systemctl --user enable --now tcsm-restore.service tcsm-watch.service"
 fi
 
 # Step 5: Display completion message

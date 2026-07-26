@@ -4,12 +4,13 @@
 # Usage: source this file or call functions directly
 #
 # Functions:
-#   tcsm-start <project> [--elevate] [--remote <host>] [--account <id>]
+#   tcsm-start <project> [--elevate] [--remote <host>] [--account <id>] [--priority critical|normal]
 #   tcsm-stop <project> [--remote <host>]
 #   tcsm-restart <project> [--elevate] [--remote <host>]
 #   tcsm-list [--remote <host>]
 #   tcsm-restore [--remote <host>] [--dry-run]
 #   tcsm-status [--remote <host>]
+#   tcsm-watch [INTERVAL]
 #   tcsm-doctor [--fix] [--check TYPE] [-v]
 #   tcsm-remote <host> <project> [--elevate]
 #
@@ -27,6 +28,11 @@ TCSM_LOG_FILE="$HOME/$CLAUDE_HOME/tcsm.log"
 TCSM_SEARCH_ROOTS="${TCSM_SEARCH_ROOTS:-$HOME/src $HOME/projects}"
 TCSM_TENANT="${TCSM_TENANT:-dev}"
 TCSM_SESSION="${TCSM_SESSION:-$TCSM_TENANT-tcsm}"
+
+# Critical session (self-hosting tcsm management)
+TCSM_CRITICAL_PROJECT="${TCSM_CRITICAL_PROJECT:-$TCSM_TENANT}"
+TCSM_CRITICAL_ACCOUNT="${TCSM_CRITICAL_ACCOUNT:-commentroversy}"
+TCSM_CRITICAL_PATH="${TCSM_CRITICAL_PATH:-/home/syseng/src/tmux-claude-session-manager}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -173,6 +179,7 @@ tcsm-start() {
   local elevate=false
   local remote=""
   local account="primary"
+  local priority="normal"
 
   # Parse options
   while [[ $# -gt 1 ]]; do
@@ -180,6 +187,7 @@ tcsm-start() {
       --elevate) elevate=true ;;
       --remote) remote="$3"; shift ;;
       --account) account="$3"; shift ;;
+      --priority) priority="$3"; shift ;;
       *) echo "Unknown option: $2" >&2; return 1 ;;
     esac
     shift
@@ -284,9 +292,9 @@ tcsm-start() {
 
   # Send Claude command to tmux window (runs interactively)
   if tmux send-keys -t "$TCSM_SESSION:$window_name" "$claude_cmd" Enter; then
-    # Update session map with account and rate limit info
-    jq --arg proj "$project" --arg path "$project_dir" --arg acct "$account" --arg tier "$rate_limit_tier" \
-      '.sessions[$proj] = {id: $proj, path: $path, window: $proj, account: $acct, rate_limit_tier: $tier, created: now}' \
+    # Update session map with account, rate limit, and priority info
+    jq --arg proj "$project" --arg path "$project_dir" --arg acct "$account" --arg tier "$rate_limit_tier" --arg prio "$priority" \
+      '.sessions[$proj] = {id: $proj, path: $path, window: $proj, account: $acct, rate_limit_tier: $tier, priority: $prio, created: now}' \
       "$TCSM_SESSION_MAP" > "${TCSM_SESSION_MAP}.tmp" && mv "${TCSM_SESSION_MAP}.tmp" "$TCSM_SESSION_MAP"
 
     # Wait for Claude to register the session (creates ~/.claude/sessions/*.json)
@@ -537,13 +545,21 @@ tcsm-restore() {
   fi
 
   local restored=0
-  jq -r '.sessions | to_entries[] | "\(.key)\t\(.value.path)\t\(.value.window)"' "$TCSM_SESSION_MAP" | \
-  while IFS=$'\t' read -r project path window; do
+  log_session "INFO" "Restoring sessions by priority (critical first)..."
+
+  # Sort by priority: critical first, then normal, then any others
+  jq -r '.sessions | to_entries[] | "\(.value.priority // "normal")\t\(.key)\t\(.value.path)\t\(.value.window)\t\(.value.account // "primary")"' "$TCSM_SESSION_MAP" | \
+  sort -V -k1,1r | \
+  while IFS=$'\t' read -r priority project path window account; do
     if [[ "$dry_run" == "true" ]]; then
-      log_session "DRY-RUN" "Would restore: $project → $window"
+      log_session "DRY-RUN" "Would restore: $project [$priority] → $window"
     else
-      if tcsm-start "$project" &>/dev/null; then
+      log_session "INFO" "Restoring [$priority]: $project..."
+      if tcsm-start "$project" --account "$account" --priority "$priority" &>/dev/null; then
         ((restored++))
+        log_session "OK" "Restored: $project"
+      else
+        log_session "WARN" "Failed to restore: $project"
       fi
     fi
   done
@@ -603,6 +619,42 @@ tcsm-status() {
     done
     echo ""
   fi
+}
+
+# Monitor and restart critical sessions if they die
+tcsm-watch() {
+  local interval="${1:-30}"
+  local should_exit=false
+
+  # Signal handlers
+  trap 'should_exit=true' SIGTERM SIGINT
+
+  log_session "INFO" "Starting session supervisor (interval: ${interval}s, PID: $$)"
+
+  while [[ "$should_exit" == "false" ]]; do
+    if [[ ! -f "$TCSM_SESSION_MAP" ]]; then
+      sleep "$interval"
+      continue
+    fi
+
+    # Check all critical sessions
+    jq -r '.sessions | to_entries[] | select(.value.priority == "critical") | "\(.key)\t\(.value.account // "primary")"' "$TCSM_SESSION_MAP" | \
+    while IFS=$'\t' read -r project account; do
+      # Check if session still exists in claude CLI
+      if ! claude sessions list 2>/dev/null | grep -q "\"$project\""; then
+        log_session "WARN" "Critical session died: $project, attempting restart..."
+        if tcsm-start "$project" --account "$account" --priority critical &>/dev/null; then
+          log_session "OK" "Restarted critical session: $project"
+        else
+          log_session "ERROR" "Failed to restart critical session: $project"
+        fi
+      fi
+    done
+
+    sleep "$interval"
+  done
+
+  log_session "INFO" "Session supervisor stopped"
 }
 
 # Connect to remote host and start Claude session
