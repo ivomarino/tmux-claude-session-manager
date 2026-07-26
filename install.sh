@@ -70,7 +70,7 @@ for new_name in "${!template_map[@]}"; do
   fi
 done
 
-# Step 3: Initialize session map and create critical management session
+# Step 3: Initialize session map and create main tcsm session
 log "Initializing TCSM infrastructure..."
 
 # Create session map if it doesn't exist
@@ -80,20 +80,30 @@ if [[ ! -f "$CONFIG_DEST/tcsm-session-map.json" ]]; then
   log "✓ Session map initialized"
 fi
 
-# Create the critical self-hosted TCSM management session
-log "Creating critical management session: $TENANT..."
+# Create main tmux session (always called 'tcsm')
+log "Creating main tmux session: tcsm..."
+if ! tmux has-session -t tcsm 2>/dev/null; then
+  if ! tmux new-session -d -s tcsm -c "$HOME"; then
+    error "Failed to create main tmux session"
+  fi
+  log "✓ Main session created: tcsm"
+fi
+
+# Create the critical self-hosted TCSM management session in window 0
+log "Creating critical management window: $TENANT..."
 source "$SKILLS_DEST/tcsm.sh" || error "Failed to load tcsm skill"
 
 # Set environment for critical session
 export TCSM_TENANT="$TENANT"
-export TCSM_SESSION="$SESSION_NAME"
+export TCSM_SESSION="tcsm"  # Main session is always 'tcsm'
+export TCSM_CRITICAL_WINDOW="${TENANT}-tcsm"  # Critical window named after tenant
 export TCSM_CRITICAL_ACCOUNT="commentroversy"
 export TCSM_CRITICAL_PATH="$REPO_PATH"
 
 if tcsm-start "$TENANT" --account commentroversy --priority critical; then
-  log "✓ Critical management session created: $TENANT"
+  log "✓ Critical management window created: ${TENANT}-tcsm"
 else
-  error "Failed to create critical management session"
+  error "Failed to create critical management window"
 fi
 
 # Step 4: Optional systemd unit installation

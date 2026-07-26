@@ -27,7 +27,8 @@ TCSM_PROJECT_MAP="$HOME/$CLAUDE_HOME/tcsm-projects.json"
 TCSM_LOG_FILE="$HOME/$CLAUDE_HOME/tcsm.log"
 TCSM_SEARCH_ROOTS="${TCSM_SEARCH_ROOTS:-$HOME/src $HOME/projects}"
 TCSM_TENANT="${TCSM_TENANT:-dev}"
-TCSM_SESSION="${TCSM_SESSION:-$TCSM_TENANT-tcsm}"
+TCSM_SESSION="${TCSM_SESSION:-tcsm}"  # Main session is always 'tcsm'
+TCSM_CRITICAL_WINDOW="${TCSM_CRITICAL_WINDOW:-$TCSM_TENANT-tcsm}"  # Critical window named after tenant
 
 # Critical session (self-hosting tcsm management)
 TCSM_CRITICAL_PROJECT="${TCSM_CRITICAL_PROJECT:-$TCSM_TENANT}"
@@ -283,10 +284,10 @@ tcsm-start() {
 
   # Start Claude session interactively in tmux window
   # Interactive mode auto-registers session and allows attaching
-  # For critical sessions, use the full TCSM session name (e.g., floads-tcsm)
+  # For critical sessions, use the tenant-tcsm window name (e.g., floads-tcsm)
   # For normal sessions, use just the project name
   local session_name="$project"
-  [[ "$priority" == "critical" ]] && session_name="$TCSM_SESSION"
+  [[ "$priority" == "critical" ]] && session_name="$TCSM_CRITICAL_WINDOW"
 
   local claude_cmd="claude --model haiku --permission-mode bypassPermissions --remote-control --name $session_name"
   [[ "$elevate" = true ]] && claude_cmd="sudo $claude_cmd"
