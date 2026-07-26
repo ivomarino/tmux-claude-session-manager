@@ -98,7 +98,7 @@ Edit `~/.claude/tcsm-projects.json` to customize project paths:
 {
   "sessions": {
     "myproject": {"path": "/home/user/src/myproject"},
-    "flamelet-iwf": {"path": "/home/user/.flamelet/tenant/flamelet-iwf"}
+    "infrastructure": {"path": "/home/user/src/infrastructure"}
   }
 }
 ```

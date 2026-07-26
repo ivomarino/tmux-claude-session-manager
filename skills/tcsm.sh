@@ -15,7 +15,7 @@
 #
 # Configuration (via environment variables):
 #   TCSM_SEARCH_ROOTS - Space-separated paths to search for git-controlled project dirs
-#                       (default: $HOME/src $HOME/.flamelet/tenant)
+#                       (default: $HOME/src $HOME/projects)
 
 set -uo pipefail
 
@@ -24,7 +24,7 @@ CLAUDE_HOME="${CLAUDE_HOME:-.claude}"
 TCSM_SESSION_MAP="$HOME/$CLAUDE_HOME/tcsm-session-map.json"
 TCSM_PROJECT_MAP="$HOME/$CLAUDE_HOME/tcsm-projects.json"
 TCSM_LOG_FILE="$HOME/$CLAUDE_HOME/tcsm.log"
-TCSM_SEARCH_ROOTS="${TCSM_SEARCH_ROOTS:-$HOME/src $HOME/.flamelet/tenant}"
+TCSM_SEARCH_ROOTS="${TCSM_SEARCH_ROOTS:-$HOME/src $HOME/projects}"
 TCSM_TENANT="${TCSM_TENANT:-dev}"
 TCSM_SESSION="${TCSM_SESSION:-$TCSM_TENANT-tcsm}"
 
@@ -675,7 +675,7 @@ CONFIGURATION:
 
 ENVIRONMENT VARIABLES:
   TCSM_SEARCH_ROOTS - Space-separated directories to search for git-controlled project folders
-                      (default: \$HOME/src \$HOME/.flamelet/tenant)
+                      (default: \$HOME/src \$HOME/projects)
                       When tcsm-start resolves a project directory that isn't under git control,
                       it searches these roots for a matching folder that is, and uses that instead.
 EOF

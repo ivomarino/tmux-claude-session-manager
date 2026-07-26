@@ -170,7 +170,7 @@ so tmux stores a literal `$` (in a single-quoted value, use a bare
 
 ---
 
-## Fork Enhancements (ivomarino)
+## Fork Enhancements
 
 This fork extends the upstream plugin with comprehensive session management tools, multi-VM support, and automated boot-time session restoration via systemd.
 
@@ -221,20 +221,20 @@ See `skills/README.md` for detailed documentation.
 
 When `tcsm-start` resolves a project directory, it checks whether that directory is under git control. If not, it automatically searches `TCSM_SEARCH_ROOTS` for a same-named directory that is and uses that instead.
 
-**Use case**: Flamelet tenants often exist as configuration stubs (e.g., `~/.flamelet/tenant/flamelet-kbe` with just `config.sh`) before the actual source repository is cloned elsewhere (e.g., `~/src/flamelet-kbe`). Running `tcsm-start flamelet-kbe` will find and use the real git-controlled source automatically.
+**Use case**: Project stubs often exist in configuration directories (e.g., `~/.config/tenant/my-project` with just `config.sh`) before the actual source repository is cloned elsewhere (e.g., `~/src/my-project`). Running `tcsm-start my-project` will find and use the real git-controlled source automatically.
 
 ```bash
-# Example: flamelet-kbe doesn't exist as a git repo, but tcsm-start finds it elsewhere
-$ tcsm-start flamelet-kbe
-[INFO] No git-controlled source folder found for 'flamelet-kbe'...
-       continuing with /home/syseng/.flamelet/tenant/flamelet-kbe
+# Example: my-project doesn't exist as a git repo in the config stub, but tcsm-start finds it elsewhere
+$ tcsm-start my-project
+[INFO] No git-controlled source folder found for 'my-project'...
+       continuing with ~/.config/tenant/my-project
 
-# If it existed at ~/src/flamelet-kbe, it would log:
-[INFO] '~/.flamelet/tenant/flamelet-kbe' is not under git control;
-       using git-controlled source instead: ~/src/flamelet-kbe
+# If it existed at ~/src/my-project, it would log:
+[INFO] '~/.config/tenant/my-project' is not under git control;
+       using git-controlled source instead: ~/src/my-project
 ```
 
-Configure search roots via `TCSM_SEARCH_ROOTS` (space-separated paths, default: `$HOME/src $HOME/.flamelet/tenant`).
+Configure search roots via `TCSM_SEARCH_ROOTS` (space-separated paths where git-controlled sources are located).
 
 #### 1b. **Multi-Account Support with Rate-Limit Tracking**
 
@@ -397,7 +397,7 @@ export TENANT=production
 
 # Git-aware project discovery: search roots
 # (space-separated paths where tcsm-start looks for git-controlled source folders)
-export TCSM_SEARCH_ROOTS="$HOME/src $HOME/.flamelet/tenant /custom/projects"
+export TCSM_SEARCH_ROOTS="$HOME/src $HOME/projects /custom/projects"
 
 # Enable systemd unit for boot-time session auto-restoration (default: 0)
 export INSTALL_SYSTEMD=1
@@ -441,6 +441,6 @@ Bug fixes and improvements are periodically contributed back to the upstream pro
 
 ---
 
-**Last Updated:** 2026-07-24  
-**Fork Repo:** https://github.com/ivomarino/tmux-claude-session-manager  
+**Last Updated:** 2026-07-26  
+**Repository:** https://github.com/ivomarino/tmux-claude-session-manager  
 **Upstream:** https://github.com/craftzdog/tmux-claude-session-manager

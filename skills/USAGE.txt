@@ -51,12 +51,12 @@ CONFIGURATION FILES:
   Project paths:    ~/.claude/tcsm-projects.json
   Logs:             ~/.claude/tcsm.log
 
-SUPPORTED PROJECTS (in ~/src/):
+SUPPORTED PROJECTS (in ~/src/ or ~/projects/):
 
-  ✓ myproject           - Main project
-  ✓ platform-infra     - IWF infrastructure
-  ✓ platform-dcx     - Data Center X
-  ✓ platform-kbe     - Kumbe infrastructure
+  ✓ myproject           - Main application project
+  ✓ infrastructure     - Infrastructure code
+  ✓ database           - Database services
+  ✓ frontend           - Frontend application
 
 REMOTE HOSTS:
 
@@ -98,9 +98,9 @@ INTEGRATION POINTS:
 
   • Tmux: Sessions created in "tcsm" tmux session
   • Claude CLI: Uses "claude code <path>" for each project
-  • Flamelet: Can run flamelet commands within session
   • SSH: Supports both local and remote dev container
   • Systemd: Integrates with tmux-claude service management
+  • Git: Supports git-aware project discovery
 
 For detailed documentation, see:
   ~/.claude/skills/tcsm.md

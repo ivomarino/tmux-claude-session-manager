@@ -211,11 +211,11 @@ ps aux | grep "claude --"
   "accounts": [
     {
       "id": "secondary",
-      "email": "user@commentroversy.com",
+      "email": "user@example.com",
       "active": true,
       "rate_limit_tier": "default_claude_max_5x",
       "metadata": {
-        "organization": "commentroversy"
+        "organization": "example-org"
       }
     }
   ]
@@ -225,11 +225,11 @@ ps aux | grep "claude --"
 ### Environment Variables
 ```bash
 # Tmux session configuration (set by install.sh, can be overridden)
-export TCSM_TENANT="floads"                    # Tenant name (default: dev)
-export TCSM_SESSION="floads-tcsm"              # Tmux session name (default: $TCSM_TENANT-tcsm)
+export TCSM_TENANT="dev"                       # Tenant name (default: dev)
+export TCSM_SESSION="dev-tcsm"                 # Tmux session name (default: $TCSM_TENANT-tcsm)
 
 # Search roots for git-controlled projects
-export TCSM_SEARCH_ROOTS="$HOME/src $HOME/.flamelet/tenant"
+export TCSM_SEARCH_ROOTS="$HOME/src $HOME/projects"
 
 # Custom installation locations
 export SKILLS_DEST="$HOME/.claude/skills"

@@ -12,7 +12,7 @@ This skill provides unified Claude session management across:
 - **Local projects** in tmux windows with interactive access
 - **Elevated operations** for infrastructure/admin work with sudo
 - **Remote sessions** via SSH to dev container (<remote-host-ip>)
-- **Multi-tenant** support for flamelet tenants (myproject, infra, datacenter, platform)
+- **Multi-project** support for organizing and managing multiple projects (backend, frontend, infrastructure, etc.)
 
 Sessions run interactively in tmux windows (organized under the `tcsm` session) and auto-register with the Claude CLI for web UI integration. You can attach to any window to interact with Claude directly.
 
@@ -250,15 +250,15 @@ Override default project directory resolution:
 ### Git-Aware Project Discovery
 When `tcsm-start` resolves a project directory, it checks if that directory is under git control. If not, it automatically searches for a git-controlled directory with the same name in the configured search roots and uses that instead (silently, or with a log message if no match is found).
 
-This is useful for flamelet tenants that exist as configuration stubs before their actual source repositories are cloned. For example, if you run `tcsm-start flamelet-kbe` but `~/.flamelet/tenant/flamelet-kbe` is just a stub directory without `.git`, the skill will look for `flamelet-kbe` in other search roots and switch to that if found.
+This is useful for projects that exist as configuration stubs before their actual source repositories are cloned. For example, if you run `tcsm-start my-project` but `~/.config/projects/my-project` is just a stub directory without `.git`, the skill will look for `my-project` in other search roots and switch to that if found.
 
 **Search roots** are configured via the `TCSM_SEARCH_ROOTS` environment variable (space-separated paths):
 ```bash
 # Default (can be overridden):
-TCSM_SEARCH_ROOTS="$HOME/src $HOME/.flamelet/tenant"
+TCSM_SEARCH_ROOTS="$HOME/src $HOME/projects"
 
 # Example: add a custom root
-export TCSM_SEARCH_ROOTS="$HOME/src $HOME/.flamelet/tenant /custom/projects"
+export TCSM_SEARCH_ROOTS="$HOME/src $HOME/projects /opt/projects"
 tcsm-start myproject
 ```
 
@@ -296,11 +296,11 @@ Remote operations use SSH key-based auth to your-user user:
 # SSH as your-user to dev container
 ssh your-user@<remote-host-ip>
 
-# SSH to flamelet tenant controllers
-ssh your-user@controller-01.myproject        # myproject
-ssh your-user@infra-prod-storage-03.infra     # infra
-ssh your-user@10.112.0.1                  # datacenter
-ssh your-user@platform-virt-01-controller.platform  # platform
+# SSH to remote project servers
+ssh your-user@app-server.example.com         # app server
+ssh your-user@infra-server.example.com       # infrastructure
+ssh your-user@10.0.0.1                       # datacenter
+ssh your-user@storage-server.example.com     # storage
 ```
 
 ## Permission Model
@@ -336,7 +336,7 @@ tmux list-windows -t tcsm
 
 # Attach to a session
 tmux attach -t tcsm:myproject
-tmux attach -t tcsm:flamelet-infra
+tmux attach -t tcsm:infrastructure
 ```
 
 ### Restore all sessions after container restart
@@ -402,17 +402,6 @@ Add to startup script or systemd service:
 tcsm-restore
 ```
 
-### Integration with Flamelet
-
-Combine with flamelet tenant sessions:
-```bash
-# Start Claude for myproject infrastructure
-tcsm-start myproject
-
-# Then in the Claude window, use flamelet:
-~/.flamelet/bin/flamelet --tenant myproject --list
-```
-
 ## Troubleshooting
 
 ### Quick Diagnostics
@@ -459,7 +448,7 @@ This will identify:
 
 ### Path display issue for self-hosted GitLab
 **Issue:** Claude Code web UI shows GitLab organization/namespace instead of project name  
-**Example:** For `git@git.iwf.io:infrastructure/flamelet-iwf.git`, displays "infrastructure" instead of "flamelet-iwf"
+**Example:** For `git@git.example.com:infrastructure/my-project.git`, displays "infrastructure" instead of "my-project"
 
 **Root cause:** Claude Code parses the git remote URL and extracts the organization namespace. This is technically correct for standard GitLab URLs (`git@gitlab.com:org/project`) but shows the wrong value when the organization/namespace doesn't match the project name.
 
@@ -516,7 +505,7 @@ The skill automatically pre-trusts all project directories to avoid the workspac
 {
   "workspaceTrustSettings": {
     "/home/your-user/src/myproject": {"hasTrustDialogAccepted": true},
-    "/home/your-user/.flamelet/tenant/flamelet-infra": {"hasTrustDialogAccepted": true},
+    "/home/your-user/projects/infrastructure": {"hasTrustDialogAccepted": true},
     ...
   }
 }
@@ -544,4 +533,3 @@ The `ensure_workspace_trusted` function automatically adds new project directori
 
 - `tmux-claude-session-manager` - Low-level tmux plugin
 - `claude-startup-simple.sh` - Boot-time startup script
-- `flamelet` - Infrastructure automation framework
