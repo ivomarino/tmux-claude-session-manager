@@ -167,3 +167,280 @@ so tmux stores a literal `$` (in a single-quoted value, use a bare
 ## License
 
 [MIT](LICENSE) © Takuya Matsuyama
+
+---
+
+## Fork Enhancements
+
+This fork extends the upstream plugin with comprehensive session management tools, multi-VM support, and automated boot-time session restoration via systemd.
+
+### New Features
+
+#### 1. **TCSM Skill** (`skills/`)
+
+A complete shell skill for managing Claude sessions across projects in TCSM (tmux-claude-session-manager) sessions:
+
+```bash
+source ~/.claude/skills/tcsm.sh
+
+# Start a project session
+tcsm-start myproject
+
+# Stop a project session
+tcsm-stop myproject
+
+# Restart a project session
+tcsm-restart myproject
+
+# List all active sessions
+tcsm-list
+
+# Check session status
+tcsm-status
+
+# Attach to a session
+tmux attach -t tcsm:myproject
+```
+
+**Features:**
+- ✅ Interactive sessions in tmux windows (attachable)
+- ✅ Start, stop, and restart sessions
+- ✅ Auto-registration with Claude CLI
+- ✅ Web UI integration via bridgeSessionId
+- ✅ Workspace trust pre-configured (see [Known Issues & Workarounds](#known-issues--workarounds))
+- ✅ Git-aware project discovery (auto-fallback to real source repos)
+- ✅ Project path resolution from configuration
+- ✅ Support for local and elevated (sudo) operations
+- ✅ Multi-project support with flexible naming
+- ✅ Multi-account support with rate-limit tracking
+- ✅ Graceful session termination (signal escalation with timeout)
+
+See `skills/README.md` for detailed documentation.
+
+#### 1a. **Git-Aware Project Discovery**
+
+When `tcsm-start` resolves a project directory, it checks whether that directory is under git control. If not, it automatically searches `TCSM_SEARCH_ROOTS` for a same-named directory that is and uses that instead.
+
+**Use case**: Project stubs often exist in configuration directories (e.g., `~/.config/tenant/my-project` with just `config.sh`) before the actual source repository is cloned elsewhere (e.g., `~/src/my-project`). Running `tcsm-start my-project` will find and use the real git-controlled source automatically.
+
+```bash
+# Example: my-project doesn't exist as a git repo in the config stub, but tcsm-start finds it elsewhere
+$ tcsm-start my-project
+[INFO] No git-controlled source folder found for 'my-project'...
+       continuing with ~/.config/tenant/my-project
+
+# If it existed at ~/src/my-project, it would log:
+[INFO] '~/.config/tenant/my-project' is not under git control;
+       using git-controlled source instead: ~/src/my-project
+```
+
+Configure search roots via `TCSM_SEARCH_ROOTS` (space-separated paths where git-controlled sources are located).
+
+#### 1b. **Multi-Account Support with Rate-Limit Tracking**
+
+Each TCSM session can be associated with a specific Claude account for administrative and rate-limit tracking:
+
+```bash
+# Start session with primary account (default)
+tcsm-start myproject
+
+# Start session with secondary account
+tcsm-start myproject --account secondary
+
+# View which account each session uses
+tcsm-list
+# Displays: Project | Window | Status | Account | Rate Limit Tier | Path
+
+tcsm-status
+# Shows per-session account configuration
+```
+
+**Features:**
+- Account selection via `--account <id>` parameter
+- Account validation: only active accounts allowed
+- Rate limit tier tracking from `~/.claude/accounts.json`
+- Display account organization name and rate limit in CLI output
+- **Note:** Account parameter is metadata-only; Claude CLI doesn't support account selection at launch
+
+**Use case**: Distribute session load across multiple Claude accounts to manage rate limits when running many parallel sessions.
+
+#### 2. **Configuration Management** (`config/`)
+
+Portable configuration templates for projects and accounts:
+
+```bash
+# Copy templates to ~/.claude/
+cp config/tcsm-projects.json.template ~/.claude/tcsm-projects.json
+cp config/accounts.json.template ~/.claude/accounts.json
+
+# Customize for your environment
+vim ~/.claude/tcsm-projects.json
+```
+
+**Configuration files:**
+- `tcsm-projects.json` - Project name → directory mappings
+- `accounts.json` - Claude account configuration
+- `.template` files - Templates with examples
+
+Environment variable override example:
+```bash
+SKILLS_DEST=/custom/skills bash install.sh
+```
+
+#### 3. **Installation Script** (`install.sh`)
+
+Automated setup for new VMs:
+
+```bash
+# Install everything in one command
+bash install.sh
+
+# Or specify tenant for multi-tenant setups
+TENANT=staging bash install.sh
+
+# This sets up:
+# - Skills in ~/.claude/skills/
+# - Config templates in ~/.claude/
+# - Default tmux session: dev-tcsm (or $TENANT-tcsm)
+```
+
+#### 4. **Boot-Time Auto-Restoration** (`systemd/tcsm-restore.service`)
+
+Optional systemd service that automatically restores all registered Claude sessions when the user logs in:
+
+```bash
+# Install and enable systemd service for auto-restoration
+INSTALL_SYSTEMD=1 bash install.sh
+
+# Or enable manually after install
+systemctl --user enable --now tcsm-restore.service
+
+# Monitor restoration at login
+journalctl --user -u tcsm-restore.service -f
+```
+
+The service calls `tcsm-restore` directly, inheriting all TCSM features:
+- **Persistent sessions** — all registered sessions restored across reboots
+- **Git-aware discovery** — automatically finds real source repos
+- **Workspace trust** — pre-configured to skip interactive prompts
+- **Clean logs** — all activity logged to `~/.claude/tcsm.log`
+
+No configuration needed — add sessions via `tcsm-start` and they auto-restore on next boot.
+
+**What it replaces:** The old, broken `tmux-claude.service` that was duplicating 150+ lines of logic and silently failing due to renamed registry files. Now unified and consolidated.
+
+### Default Session (`dev-tcsm`)
+
+Each VM gets a default session named `<tenant>-tcsm` that runs in the repository root:
+
+```bash
+# Attach to default session
+tmux attach -t dev-tcsm
+
+# Inside, manage all Claude sessions
+source ~/.claude/skills/tcsm.sh
+tcsm-start myproject
+tcsm-stop myproject
+tcsm-restart myproject
+tcsm-list
+```
+
+Session name format: `<tenant>-tcsm` (tcsm = tmux-claude-session-manager)
+
+**Benefits:**
+- Centralized workspace for managing Claude sessions
+- Easy multi-VM setup: `TENANT=prod bash install.sh`
+- Auto-starts on login (optional via systemd)
+- Session persists across disconnects
+
+### Multi-VM Workflow
+
+Example across three development VMs:
+
+**dev.myproject:**
+```
+Session: dev-tcsm
+├─ myproject
+├─ infrastructure-project
+└─ synthesia
+```
+
+**staging.myproject:**
+```
+Session: staging-tcsm
+├─ staging-myproject
+└─ staging-api
+```
+
+**prod-infra:**
+```
+Session: prod-tcsm
+├─ infrastructure-project
+└─ infrastructure
+```
+
+Each VM independently manages its Claude sessions using the same skill.
+
+### Configuration via Environment
+
+All paths and settings support environment variable overrides:
+
+```bash
+# Custom skills directory
+export SKILLS_DEST=/opt/claude/skills
+
+# Custom config location
+export CONFIG_DEST=/etc/claude
+
+# Tenant identifier (for multi-tenant setups)
+export TENANT=production
+
+# Git-aware project discovery: search roots
+# (space-separated paths where tcsm-start looks for git-controlled source folders)
+export TCSM_SEARCH_ROOTS="$HOME/src $HOME/projects /custom/projects"
+
+# Enable systemd unit for boot-time session auto-restoration (default: 0)
+export INSTALL_SYSTEMD=1
+
+bash install.sh
+```
+
+### Known Issues & Workarounds
+
+#### Workspace Trust Dialog Reappears on Session Start
+
+**Issue**: Claude Code has a [known bug](https://github.com/anthropics/claude-code/issues/9113) where the workspace trust dialog reappears even when `hasTrustDialogAccepted` is already set in `~/.claude.json`.
+
+**Workaround**: `tcsm-start` includes an additional step after pre-configuring workspace trust: it explicitly calls `claude config set workspaceTrustSettings."$project_dir".hasTrustDialogAccepted true` to ensure Claude reads the trust setting before presenting the interactive confirmation dialog. This reduces (but doesn't fully eliminate) the prompt on first start.
+
+**What to do**: If the trust prompt still appears on initial session start, answer "Yes, I trust this folder" once. Future restarts of the same project should skip the prompt.
+
+**Note**: This is a workaround for an upstream Claude Code issue. If Claude Code fixes the underlying bug, this workaround becomes a harmless no-op.
+
+### Documentation
+
+- **`skills/README.md`** - Skill overview and features
+- **`skills/tcsm.md`** - Comprehensive skill documentation
+- **`skills/USAGE.txt`** - Quick reference card
+- **`config/README.md`** - Configuration file reference
+- **`install.sh`** - Installation and setup automation
+
+### Compatibility
+
+✅ Backward compatible with upstream  
+✅ Works with tmux 3.2+  
+✅ Supports macOS and Linux  
+✅ Generic paths (no hardcoding)  
+✅ Multi-VM ready  
+
+### Contributing Back
+
+Bug fixes and improvements are periodically contributed back to the upstream project:
+
+- [craftzdog/tmux-claude-session-manager](https://github.com/craftzdog/tmux-claude-session-manager)
+
+---
+
+**Last Updated:** 2026-07-26  
+**Repository:** https://github.com/ivomarino/tmux-claude-session-manager  
+**Upstream:** https://github.com/craftzdog/tmux-claude-session-manager

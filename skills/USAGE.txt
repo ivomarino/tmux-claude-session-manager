@@ -1,0 +1,110 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║        TCSM (tmux-claude-session-manager) Skill - Quick Reference            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+INSTALLATION:
+  Already installed at: ~/.claude/skills/tcsm.sh
+  Documentation: ~/.claude/skills/tcsm.md
+
+QUICK START:
+
+  1. Start a Claude session for a project:
+     source ~/.claude/skills/tcsm.sh
+     tcsm-start myproject
+
+  2. Stop a session:
+     tcsm-stop myproject
+
+  3. Restart a session:
+     tcsm-restart myproject
+
+  4. List all sessions:
+     tcsm-list
+
+  5. Check status:
+     tcsm-status
+
+  6. Connect to remote dev container:
+     tcsm-remote <remote-host-ip> myproject
+
+TMUX & ATTACHMENT:
+
+  Sessions run in tmux windows - you can attach and interact:
+
+  tmux list-windows -t tcsm         # List all project windows
+  tmux attach -t tcsm:myproject     # Attach to myproject session
+
+  Sessions auto-register and appear in web UI:
+
+  ls ~/.claude/sessions/            # List active session files
+  jq '.name' ~/.claude/sessions/*.json  # Show all session names
+
+PERMISSION MODES:
+
+  Normal:   tcsm-start myproject
+  Elevated: tcsm-start myproject --elevate
+  Remote:   tcsm-start myproject --remote <remote-host-ip>
+
+CONFIGURATION FILES:
+
+  Session mappings: ~/.claude/tcsm-session-map.json
+  Project paths:    ~/.claude/tcsm-projects.json
+  Logs:             ~/.claude/tcsm.log
+
+SUPPORTED PROJECTS (in ~/src/ or ~/projects/):
+
+  ✓ myproject           - Main application project
+  ✓ infrastructure     - Infrastructure code
+  ✓ database           - Database services
+  ✓ frontend           - Frontend application
+
+REMOTE HOSTS:
+
+  Dev container:  <remote-host-ip>
+  SSH user:       your-user
+  Connection:     ssh your-user@<remote-host-ip>
+
+EXAMPLES:
+
+  # Start local session
+  tcsm-start myproject
+
+  # Stop a session
+  tcsm-stop myproject
+
+  # Restart a session
+  tcsm-restart myproject
+
+  # List all sessions
+  tcsm-list
+
+  # Remote session on dev container
+  tcsm-remote <remote-host-ip> myproject
+
+  # Elevated session (sudo)
+  tcsm-start myproject --elevate
+
+  # Restore all sessions after reboot
+  tcsm-restore --remote <remote-host-ip>
+
+TROUBLESHOOTING:
+
+  Check status:  tcsm-status
+  View logs:     tail -f ~/.claude/tcsm.log
+  List sessions: tcsm-list
+  Test SSH:      ssh your-user@<remote-host-ip> echo ok
+
+INTEGRATION POINTS:
+
+  • Tmux: Sessions created in "tcsm" tmux session
+  • Claude CLI: Uses "claude code <path>" for each project
+  • SSH: Supports both local and remote dev container
+  • Systemd: Integrates with tmux-claude service management
+  • Git: Supports git-aware project discovery
+
+For detailed documentation, see:
+  ~/.claude/skills/tcsm.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Created: 2026-07-24
+Skill Version: 2.0.0

@@ -1,0 +1,22 @@
+[Unit]
+Description=TCSM Critical Session Supervisor
+Documentation=file:%h/.claude/skills/tcsm.md
+After=tcsm-restore.service
+Wants=tcsm-restore.service
+
+[Service]
+Type=simple
+RemainAfterExit=no
+Environment="PATH=%h/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+Environment="HOME=%h"
+ExecStart=/bin/bash -c 'source %h/.claude/skills/tcsm.sh && tcsm-watch 30'
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tcsm-watch
+StartLimitInterval=300
+StartLimitBurst=5
+
+[Install]
+WantedBy=default.target

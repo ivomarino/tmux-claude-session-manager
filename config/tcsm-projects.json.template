@@ -1,0 +1,18 @@
+{
+  "sessions": {
+    "myproject": {
+      "path": "$HOME/src/myproject",
+      "model": "haiku",
+      "description": "Main project"
+    },
+    "infrastructure-project": {
+      "path": "$HOME/.infra/tenant/infrastructure-project",
+      "model": "haiku",
+      "description": "Infrastructure project"
+    }
+  },
+  "defaults": {
+    "model": "haiku",
+    "permission_mode": "bypassPermissions"
+  }
+}
