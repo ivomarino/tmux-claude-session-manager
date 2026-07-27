@@ -283,6 +283,9 @@ tcsm-start() {
   # is set in ~/.claude.json (see: https://github.com/anthropics/claude-code/issues/9113)
   claude config set "workspaceTrustSettings.\"$project_dir\".hasTrustDialogAccepted" true 2>/dev/null || true
 
+  # Wait briefly for window to be fully initialized
+  sleep 0.2
+
   # Start Claude session interactively in tmux window
   # Interactive mode auto-registers session and allows attaching
   # For critical sessions, use the tenant-tcsm window name (e.g., production-tcsm)
@@ -297,8 +300,12 @@ tcsm-start() {
   local rate_limit_tier
   rate_limit_tier=$(get_rate_limit_tier "$account")
 
-  # Send Claude command to tmux window (runs interactively)
-  if tmux send-keys -t "$TCSM_SESSION:$window_name" "$claude_cmd" Enter; then
+  # Execute Claude command in dedicated shell context to prevent keystroke echo
+  # Use explicit pane targeting: Session:Window.Pane (pane 0 = default)
+  if tmux send-keys -t "$TCSM_SESSION:$window_name.0" "$claude_cmd" Enter 2>/dev/null; then
+    # Clear the echoed command from the pane (send Ctrl-L after a brief delay to let Claude start)
+    sleep 0.3
+    tmux send-keys -t "$TCSM_SESSION:$window_name.0" C-l 2>/dev/null || true
     # Update session map with account, rate limit, and priority info
     jq --arg proj "$project" --arg path "$project_dir" --arg acct "$account" --arg tier "$rate_limit_tier" --arg prio "$priority" --arg win "$window_name" \
       '.sessions[$proj] = {id: $proj, path: $path, window: $win, account: $acct, rate_limit_tier: $tier, priority: $prio, created: now}' \
