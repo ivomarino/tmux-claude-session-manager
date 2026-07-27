@@ -97,10 +97,21 @@ source "$SKILLS_DEST/tcsm.sh" || error "Failed to load tcsm skill"
 export TCSM_TENANT="$TENANT"
 export TCSM_SESSION="tcsm"  # Main session is always 'tcsm'
 export TCSM_CRITICAL_WINDOW="${TENANT}-tcsm"  # Critical window named after tenant
-export TCSM_CRITICAL_ACCOUNT="commentroversy"
 export TCSM_CRITICAL_PATH="$REPO_PATH"
 
-if tcsm-start "$TENANT" --account commentroversy --priority critical; then
+# Determine default account: use default_account from accounts.json, fallback to first active, then commentroversy, then floads
+if [[ -f "$CONFIG_DEST/accounts.json" ]]; then
+  export TCSM_CRITICAL_ACCOUNT=$(jq -r '.default_account // empty' "$CONFIG_DEST/accounts.json" 2>/dev/null)
+  if [[ -z "$TCSM_CRITICAL_ACCOUNT" ]]; then
+    export TCSM_CRITICAL_ACCOUNT=$(jq -r '.accounts[] | select(.active==true) | .id' "$CONFIG_DEST/accounts.json" 2>/dev/null | head -1)
+  fi
+fi
+export TCSM_CRITICAL_ACCOUNT="${TCSM_CRITICAL_ACCOUNT:-primary}"  # Primary fallback (commentroversy)
+if ! jq -e ".accounts[] | select(.id==\"$TCSM_CRITICAL_ACCOUNT\")" "$CONFIG_DEST/accounts.json" &>/dev/null 2>&1; then
+  export TCSM_CRITICAL_ACCOUNT="secondary"  # Secondary fallback (floads)
+fi
+
+if tcsm-start "$TENANT" --account "$TCSM_CRITICAL_ACCOUNT" --priority critical; then
   log "✓ Critical management window created: ${TENANT}-tcsm"
 else
   error "Failed to create critical management window"
