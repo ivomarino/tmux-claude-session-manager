@@ -300,6 +300,16 @@ tcsm-start() {
   local rate_limit_tier
   rate_limit_tier=$(get_rate_limit_tier "$account")
 
+  # Guard: never retype the launch command into a pane that already has Claude
+  # running. Without this, a false-positive liveness check upstream (e.g. in
+  # tcsm-watch) would keep re-injecting the command into a live session.
+  local pane_cmd
+  pane_cmd=$(tmux list-panes -t "$TCSM_SESSION:$window_name.0" -F '#{pane_current_command}' 2>/dev/null)
+  if [[ "$pane_cmd" == "claude" ]]; then
+    log_session "INFO" "Claude already running in $TCSM_SESSION:$window_name, skipping relaunch"
+    return 0
+  fi
+
   # Execute Claude command in dedicated shell context to prevent keystroke echo
   # Use explicit pane targeting: Session:Window.Pane (pane 0 = default)
   if tmux send-keys -t "$TCSM_SESSION:$window_name.0" "$claude_cmd" Enter 2>/dev/null; then
@@ -315,7 +325,7 @@ tcsm-start() {
     # This is critical: the session file must exist before we return for web UI integration
     local wait_count=0
     while [[ $wait_count -lt 50 ]]; do  # 5 seconds max (50 * 0.1s)
-      if grep -l "\"$project\"" "$HOME/$CLAUDE_HOME/sessions"/*.json 2>/dev/null | grep -q .; then
+      if grep -l "\"name\":\"$session_name\"" "$HOME/$CLAUDE_HOME/sessions"/*.json 2>/dev/null | grep -q .; then
         break
       fi
       sleep 0.1
@@ -685,8 +695,27 @@ tcsm-watch() {
 
     for line in "${critical_sessions[@]}"; do
       IFS=$'\t' read -r project account <<< "$line"
-      # Check if session still exists in claude CLI
-      if ! claude sessions list </dev/null 2>/dev/null | grep -q "\"$project\""; then
+      # Critical sessions always run in the tenant window (e.g. home-tcsm)
+      local session_name="$TCSM_CRITICAL_WINDOW"
+
+      # Liveness check: does a registered session file for this name point at
+      # a still-running PID? (There is no `claude sessions list` subcommand -
+      # relying on one always reports the session as dead.)
+      local alive=false
+      local session_file
+      for session_file in "$HOME/$CLAUDE_HOME/sessions"/*.json; do
+        [[ -f "$session_file" ]] || continue
+        local name pid
+        name=$(jq -r '.name // empty' "$session_file" 2>/dev/null)
+        [[ "$name" == "$session_name" ]] || continue
+        pid=$(jq -r '.pid // empty' "$session_file" 2>/dev/null)
+        if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+          alive=true
+          break
+        fi
+      done
+
+      if [[ "$alive" == "false" ]]; then
         log_session "WARN" "Critical session died: $project, attempting restart..."
         if tcsm-start "$project" --account "$account" --priority critical </dev/null &>/dev/null; then
           log_session "OK" "Restarted critical session: $project"
