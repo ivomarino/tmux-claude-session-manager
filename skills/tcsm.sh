@@ -32,8 +32,8 @@ TCSM_CRITICAL_WINDOW="${TCSM_CRITICAL_WINDOW:-$TCSM_TENANT-tcsm}"  # Critical wi
 
 # Critical session (self-hosting tcsm management)
 TCSM_CRITICAL_PROJECT="${TCSM_CRITICAL_PROJECT:-$TCSM_TENANT}"
-TCSM_CRITICAL_ACCOUNT="${TCSM_CRITICAL_ACCOUNT:-commentroversy}"
-TCSM_CRITICAL_PATH="${TCSM_CRITICAL_PATH:-/home/syseng/src/tmux-claude-session-manager}"
+TCSM_CRITICAL_ACCOUNT="${TCSM_CRITICAL_ACCOUNT:-primary}"
+TCSM_CRITICAL_PATH="${TCSM_CRITICAL_PATH:-$HOME/src/tmux-claude-session-manager}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -284,7 +284,7 @@ tcsm-start() {
 
   # Start Claude session interactively in tmux window
   # Interactive mode auto-registers session and allows attaching
-  # For critical sessions, use the tenant-tcsm window name (e.g., floads-tcsm)
+  # For critical sessions, use the tenant-tcsm window name (e.g., production-tcsm)
   # For normal sessions, use just the project name
   local session_name="$project"
   [[ "$priority" == "critical" ]] && session_name="$TCSM_CRITICAL_WINDOW"
@@ -739,7 +739,7 @@ EXAMPLES:
   tcsm-list
   tcsm-list --remote <remote-host>
 
-  tcsm-remote <remote-host> floads
+  tcsm-remote <remote-host> production
   tcsm-remote <remote-host> infrastructure-project --elevate
 
 CONFIGURATION:

@@ -58,10 +58,10 @@ All notable changes to this project are documented here. This fork enhances the 
   - `claude-system-status` - display format updated
 
 ### Changed
-- Account configuration: switched primary/secondary status
-  - Secondary (commentroversy) now active for web UI compatibility
-  - Primary (floads) now inactive
-  - All sessions registered under active commentroversy account
+- Account configuration: switched primary/secondary account IDs
+  - Secondary account now inactive
+  - Primary account now active for web UI compatibility
+  - All sessions registered under active primary account
 
 ### Removed
 - Legacy session registry references (moved to ~/.claude/legacy/)

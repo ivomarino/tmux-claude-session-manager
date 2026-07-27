@@ -112,7 +112,7 @@ tmux-claude-session-manager/
   
 - **Critical Window**: First window (window 0) named after tenant
   - Window format: `tcsm:<TENANT>-tcsm>`
-  - Example for floads tenant: `tcsm:floads-tcsm`
+  - Example for production tenant: `tcsm:production-tcsm`
   - Runs the TCSM management Claude session (priority: critical)
   
 - **Project Windows**: Child windows (window 1+) named after projects
@@ -243,7 +243,7 @@ export SKILLS_DEST="$HOME/.claude/skills"
 export CONFIG_DEST="$HOME/.claude"
 ```
 
-**Note:** The main tmux session is always named `tcsm` (invariant across all tenants). Window 0 is the critical management session named `<TENANT>-tcsm` (e.g., `floads-tcsm`). Project windows are windows 1+ within this session. The main `tcsm` session should never be killed during normal operation.
+**Note:** The main tmux session is always named `tcsm` (invariant across all tenants). Window 0 is the critical management session named `<TENANT>-tcsm` (e.g., `production-tcsm`). Project windows are windows 1+ within this session. The main `tcsm` session should never be killed during normal operation.
 
 ## Testing Workflow
 
