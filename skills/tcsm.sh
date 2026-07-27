@@ -571,19 +571,24 @@ tcsm-restore() {
 
   # Sort by priority: critical first, then normal, then any others
   # Use awk to sort: critical gets priority 0, normal gets 1, others get 2
-  jq -r '.sessions | to_entries[] | "\(.value.priority // "normal")\t\(.key)\t\(.value.path)\t\(.value.window)\t\(.value.account // "primary")"' "$TCSM_SESSION_MAP" | \
-  awk -F'\t' '{
-    if ($1 == "critical") prio = 0;
-    else if ($1 == "normal") prio = 1;
-    else prio = 2;
-    print prio"\t"$0
-  }' | sort -n -k1,1 | cut -f2- | \
-  while IFS=$'\t' read -r priority project path window account; do
+  local restore_lines=()
+  mapfile -t restore_lines < <(
+    jq -r '.sessions | to_entries[] | "\(.value.priority // "normal")\t\(.key)\t\(.value.path)\t\(.value.window)\t\(.value.account // "primary")"' "$TCSM_SESSION_MAP" | \
+    awk -F'\t' '{
+      if ($1 == "critical") prio = 0;
+      else if ($1 == "normal") prio = 1;
+      else prio = 2;
+      print prio"\t"$0
+    }' | sort -n -k1,1 | cut -f2-
+  )
+
+  for line in "${restore_lines[@]}"; do
+    IFS=$'\t' read -r priority project path window account <<< "$line"
     if [[ "$dry_run" == "true" ]]; then
       log_session "DRY-RUN" "Would restore: $project [$priority] → $window"
     else
       log_session "INFO" "Restoring [$priority]: $project..."
-      if tcsm-start "$project" --account "$account" --priority "$priority" &>/dev/null; then
+      if tcsm-start "$project" --account "$account" --priority "$priority" </dev/null &>/dev/null; then
         ((restored++))
         log_session "OK" "Restored: $project"
       else
@@ -666,12 +671,17 @@ tcsm-watch() {
     fi
 
     # Check all critical sessions
-    jq -r '.sessions | to_entries[] | select(.value.priority == "critical") | "\(.key)\t\(.value.account // "primary")"' "$TCSM_SESSION_MAP" | \
-    while IFS=$'\t' read -r project account; do
+    local critical_sessions=()
+    mapfile -t critical_sessions < <(
+      jq -r '.sessions | to_entries[] | select(.value.priority == "critical") | "\(.key)\t\(.value.account // "primary")"' "$TCSM_SESSION_MAP"
+    )
+
+    for line in "${critical_sessions[@]}"; do
+      IFS=$'\t' read -r project account <<< "$line"
       # Check if session still exists in claude CLI
-      if ! claude sessions list 2>/dev/null | grep -q "\"$project\""; then
+      if ! claude sessions list </dev/null 2>/dev/null | grep -q "\"$project\""; then
         log_session "WARN" "Critical session died: $project, attempting restart..."
-        if tcsm-start "$project" --account "$account" --priority critical &>/dev/null; then
+        if tcsm-start "$project" --account "$account" --priority critical </dev/null &>/dev/null; then
           log_session "OK" "Restarted critical session: $project"
         else
           log_session "ERROR" "Failed to restart critical session: $project"
