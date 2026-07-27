@@ -259,8 +259,9 @@ tcsm-start() {
     fi
   fi
 
-  # Resolve window name from project
+  # Resolve window name from project (or use critical window name if priority is critical)
   local window_name="${project//\//-}"
+  [[ "$priority" == "critical" ]] && window_name="$TCSM_CRITICAL_WINDOW"
 
   # Check if tmux window exists
   if tmux list-windows -t "$TCSM_SESSION:$window_name" &>/dev/null 2>&1; then
@@ -299,8 +300,8 @@ tcsm-start() {
   # Send Claude command to tmux window (runs interactively)
   if tmux send-keys -t "$TCSM_SESSION:$window_name" "$claude_cmd" Enter; then
     # Update session map with account, rate limit, and priority info
-    jq --arg proj "$project" --arg path "$project_dir" --arg acct "$account" --arg tier "$rate_limit_tier" --arg prio "$priority" \
-      '.sessions[$proj] = {id: $proj, path: $path, window: $proj, account: $acct, rate_limit_tier: $tier, priority: $prio, created: now}' \
+    jq --arg proj "$project" --arg path "$project_dir" --arg acct "$account" --arg tier "$rate_limit_tier" --arg prio "$priority" --arg win "$window_name" \
+      '.sessions[$proj] = {id: $proj, path: $path, window: $win, account: $acct, rate_limit_tier: $tier, priority: $prio, created: now}' \
       "$TCSM_SESSION_MAP" > "${TCSM_SESSION_MAP}.tmp" && mv "${TCSM_SESSION_MAP}.tmp" "$TCSM_SESSION_MAP"
 
     # Wait for Claude to register the session (creates ~/.claude/sessions/*.json)
@@ -353,8 +354,23 @@ tcsm-stop() {
   fi
 
   check_prerequisites || return 1
+  init_mapping_files
 
-  local window_name="${project//\//-}"
+  # Get window name from session map or derive from project name
+  local window_name
+  if [[ -f "$TCSM_SESSION_MAP" ]]; then
+    window_name=$(jq -r ".sessions[\"$project\"].window // empty" "$TCSM_SESSION_MAP" 2>/dev/null)
+  fi
+
+  # Fallback: derive window name from project (for critical sessions: use TCSM_CRITICAL_WINDOW if project matches)
+  if [[ -z "$window_name" ]]; then
+    local priority=$(jq -r ".sessions[\"$project\"].priority // \"normal\"" "$TCSM_SESSION_MAP" 2>/dev/null)
+    if [[ "$priority" == "critical" ]]; then
+      window_name="$TCSM_CRITICAL_WINDOW"
+    else
+      window_name="${project//\//-}"
+    fi
+  fi
 
   # Check if tmux window exists
   if tmux list-windows -t "$TCSM_SESSION:$window_name" &>/dev/null 2>&1; then
