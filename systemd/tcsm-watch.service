@@ -9,6 +9,7 @@ Type=simple
 RemainAfterExit=no
 Environment="PATH=%h/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 Environment="HOME=%h"
+Environment="TCSM_TENANT=floads"
 ExecStart=/bin/bash -c 'source %h/.claude/skills/tcsm.sh && tcsm-watch 30'
 Restart=on-failure
 RestartSec=10
