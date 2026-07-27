@@ -10,7 +10,7 @@ Environment="PATH=%h/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bi
 Environment="HOME=%h"
 Environment="TCSM_TENANT=floads"
 ExecStart=/bin/bash -c 'source %h/.claude/skills/tcsm.sh && tcsm-restore'
-TimeoutStartSec=120
+TimeoutStartSec=300
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=tcsm-restore
